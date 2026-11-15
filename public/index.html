@@ -1,0 +1,535 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>냥이 눈치게임</title>
+    <script src="/socket.io/socket.io.js"></script>
+    <style>
+        * { box-sizing: border-box; font-family: 'Apple SD Gothic Neo', sans-serif; }
+        body { background: #e9ecef; margin: 0; padding: 8px; display: flex; flex-direction: column; align-items: center; }
+        h1 { font-size: 1.3rem; color: #333; margin: 8px 0; text-align: center; }
+        
+        #login-screen, #room-screen, #gameover-screen { width: 100%; max-width: 440px; background: white; padding: 20px; border-radius: 16px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); margin-top: 20px; }
+        input, button { width: 100%; padding: 12px; margin: 6px 0; border-radius: 8px; border: 1px solid #ccc; font-size: 1rem; }
+        button { background: #ff7f50; color: white; border: none; font-weight: bold; cursor: pointer; }
+        button:disabled { background: #adb5bd; cursor: not-allowed; }
+
+        .divider { text-align: center; margin: 14px 0; color: #868e96; font-size: 0.85rem; position: relative; }
+        .join-row { display: flex; gap: 8px; }
+        .join-row input { width: 45%; text-align: center; font-weight: bold; letter-spacing: 2px; }
+        .join-row button { width: 55%; background: #339af0; }
+
+        /* 방 번호 표시 배지 */
+        .room-code-banner {
+            background: #edf2ff;
+            border: 2px solid #4c6ef5;
+            border-radius: 12px;
+            padding: 10px 14px;
+            margin-bottom: 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .room-code-num { font-size: 1.4rem; font-weight: 900; color: #364fc7; letter-spacing: 3px; }
+        .copy-btn { width: auto; padding: 6px 12px; margin: 0; font-size: 0.85rem; background: #4c6ef5; }
+
+        /* 대기실 간단 룰 안내 박스 */
+        .rule-guide-box {
+            background: #f1f3f5;
+            border-left: 4px solid #ff7f50;
+            padding: 10px 12px;
+            border-radius: 8px;
+            margin-bottom: 12px;
+            font-size: 0.84rem;
+            line-height: 1.45;
+            color: #343a40;
+        }
+        .rule-guide-box b { color: #d9480f; }
+
+        /* 대기실 착석 스타일 */
+        .seat-grid { display: flex; flex-direction: column; gap: 8px; margin: 12px 0; }
+        .seat-slot {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 11px 14px; border-radius: 12px; border: 2px dashed #ced4da;
+            background: #f8f9fa; cursor: pointer; transition: 0.2s;
+        }
+        .seat-slot.occupied { border-style: solid; background: white; cursor: default; }
+        .seat-slot.my-seat { border-width: 3px; box-shadow: 0 2px 8px rgba(0,0,0,0.12); }
+        .seat-badge { width: 20px; height: 20px; border-radius: 50%; display: inline-block; margin-right: 10px; vertical-align: middle; }
+        .seat-info { display: flex; align-items: center; font-weight: bold; }
+        .seat-status { font-size: 0.85rem; color: #495057; }
+        .lobby-waiting-box { background: #fff9db; padding: 8px 10px; border-radius: 8px; font-size: 0.85rem; color: #856404; margin-bottom: 8px; }
+
+        /* 게임 화면 전체 컨테이너 */
+        #game-screen { width: 100%; max-width: 460px; display: none; flex-direction: column; gap: 10px; }
+        
+        .top-bar { display: flex; justify-content: space-between; align-items: center; background: white; padding: 8px 14px; border-radius: 12px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+        .reset-mini-btn { width: auto; padding: 6px 12px; margin: 0; font-size: 0.85rem; background: #fa5252; border-radius: 6px; }
+
+        /* 원형 보드게임 테이블 영역 */
+        .table-arena {
+            position: relative;
+            width: 100%;
+            height: 365px;
+            background: radial-gradient(circle, #38b2ac 0%, #2c7a7b 100%);
+            border: 8px solid #8d5524;
+            border-radius: 36px;
+            box-shadow: inset 0 0 25px rgba(0,0,0,0.35), 0 6px 15px rgba(0,0,0,0.15);
+            overflow: hidden;
+        }
+
+        .center-score-zone {
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            z-index: 10;
+            transition: transform 1.2s cubic-bezier(0.22, 1, 0.36, 1), opacity 1.2s ease;
+        }
+        .center-cards-row { display: flex; gap: 4px; justify-content: center; align-items: center; }
+        .score-card-img { width: 78px; height: 110px; object-fit: contain; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.4); }
+        .score-card-img.stacked { width: 56px; height: 80px; }
+        .pot-badge {
+            background: #ff6b6b; color: white; font-size: 0.75rem; font-weight: bold;
+            padding: 2px 8px; border-radius: 10px; margin-bottom: 4px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.3); white-space: nowrap;
+        }
+
+        .table-seat {
+            position: absolute; display: flex; flex-direction: column; align-items: center;
+            width: 95px; transition: 0.3s; z-index: 5;
+        }
+        .pos-0 { bottom: 10px; left: 50%; transform: translateX(-50%); }
+        .pos-1 { top: 10px; left: 14px; }
+        .pos-2 { top: 10px; right: 14px; }
+        .pos-3 { top: 48%; left: 10px; transform: translateY(-50%); }
+        .pos-4 { top: 48%; right: 10px; transform: translateY(-50%); }
+
+        .player-tag {
+            background: rgba(255, 255, 255, 0.95); padding: 3px 8px; border-radius: 12px;
+            font-size: 0.78rem; font-weight: bold; box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            white-space: nowrap; border: 2px solid #ccc;
+        }
+        .winner-glow { box-shadow: 0 0 15px 5px #ffd43b !important; transform: scale(1.08); background: #fff9db !important; }
+
+        .played-card-slot {
+            width: 54px; height: 76px; margin: 4px 0; border-radius: 6px;
+            border: 1.5px dashed rgba(255,255,255,0.5);
+            display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.15);
+        }
+        .played-card-back {
+            width: 100%; height: 100%;
+            background: repeating-linear-gradient(45deg, #ff7f50, #ff7f50 6px, #ff9f43 6px, #ff9f43 12px);
+            border-radius: 5px; border: 2px solid white;
+            display: flex; align-items: center; justify-content: center;
+            color: white; font-size: 1.2rem; box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+        }
+        .played-card-front {
+            width: 100%; height: 100%; object-fit: contain; border-radius: 5px;
+            box-shadow: 0 3px 8px rgba(0,0,0,0.4); animation: flipIn 0.4s ease;
+        }
+        @keyframes flipIn { 0% { transform: scaleX(0); } 100% { transform: scaleX(1); } }
+
+        .status-banner {
+            background: white; padding: 10px; border-radius: 12px;
+            text-align: center; font-weight: bold; font-size: 0.92rem;
+            color: #2b2d42; box-shadow: 0 2px 5px rgba(0,0,0,0.06);
+        }
+
+        .deck-box { background: white; padding: 12px; border-radius: 12px; box-shadow: 0 2px 5px rgba(0,0,0,0.06); }
+        .deck-title { margin: 0 0 8px 0; font-size: 0.85rem; font-weight: bold; color: #495057; display: flex; justify-content: space-between; }
+        .hand-container { display: flex; overflow-x: auto; gap: 6px; padding-bottom: 4px; }
+        .hand-card-item { cursor: pointer; transition: 0.2s; flex-shrink: 0; }
+        .hand-card-item:hover { transform: translateY(-6px); }
+        .card-img { width: 68px; height: 98px; object-fit: contain; border-radius: 6px; box-shadow: 0 2px 4px rgba(0,0,0,0.15); }
+        .won-card-img { width: 46px; height: 66px; object-fit: contain; border-radius: 5px; box-shadow: 0 1px 3px rgba(0,0,0,0.2); }
+
+        .rank-item { padding: 12px; border-radius: 10px; background: #f8f9fa; margin: 8px 0; display: flex; justify-content: space-between; font-size: 1.1rem; }
+        .rank-1 { background: #fff3bf; border: 2px solid #fcc419; font-weight: bold; }
+        .hidden { display: none !important; }
+    </style>
+</head>
+<body>
+
+    <!-- 1. 방 만들기 / 방 들어가기 화면 -->
+    <div id="login-screen">
+        <h1>🐾 냥이 눈치게임</h1>
+        <p style="text-align:center; color:#666; font-size:0.9rem;">이름을 적고 새 방을 만들거나 친구 방에 들어가자!</p>
+        <input type="text" id="username" placeholder="내 이름 입력 (예: 아린이)" maxlength="10">
+        
+        <button onclick="createRoom()" style="margin-top: 12px; background: #ff7f50;">🏠 새 방 만들기 (방장)</button>
+        
+        <div class="divider">─── 또는 친구 방 코드로 입장 ───</div>
+        
+        <div class="join-row">
+            <input type="tel" id="room-code-input" placeholder="4자리 번호" maxlength="4">
+            <button onclick="joinRoom()">🚪 방 들어가기</button>
+        </div>
+    </div>
+
+    <!-- 2. 실시간 착석 대기실 화면 -->
+    <div id="room-screen" class="hidden">
+        <div class="room-code-banner">
+            <div>
+                <div style="font-size: 0.75rem; color: #495057;">친구에게 알려줄 방 번호</div>
+                <div class="room-code-num" id="display-room-code">0000</div>
+            </div>
+            <button class="copy-btn" onclick="copyRoomCode()">번호 복사</button>
+        </div>
+        
+        <div class="rule-guide-box">
+            <b>📜 한눈에 보는 게임 규칙</b><br>
+            • 각자 <b>1~15 숫자 카드</b>를 한 장씩 동시에 내요.<br>
+            • 🐱 <b>고양이(+점수)</b>: 가장 <b>높은 숫자</b>를 낸 사람이 가져가요!<br>
+            • 🐭 <b>생쥐(-점수)</b>: 가장 <b>낮은 숫자</b>를 낸 사람이 떠안아요!<br>
+            • 같은 숫자를 내면 <b>무효!</b> 모두 겹치면 다음 판으로 점수가 쌓여요.<br>
+            • 15라운드 후 점수가 가장 높은 사람이 <b>최종 우승!</b>
+        </div>
+
+        <div id="unseated-list" class="lobby-waiting-box">접속 중: 없음</div>
+        <div class="seat-grid" id="seat-grid"></div>
+        <button id="ready-btn" onclick="toggleReady()" disabled>자리에 먼저 앉아주세요</button>
+        <button id="start-btn" onclick="startGame()" class="hidden" style="background: #339af0;">방장 게임 시작</button>
+    </div>
+
+    <!-- 3. 게임 플레이 화면 -->
+    <div id="game-screen">
+        <div class="top-bar">
+            <span id="round-info" style="font-weight: bold; color: #333;">라운드 1 / 15</span>
+            <button id="ingame-reset-btn" class="reset-mini-btn hidden" onclick="confirmReset()">🔄 새로하기</button>
+        </div>
+
+        <div class="table-arena" id="table-arena">
+            <div class="center-score-zone" id="center-score-zone"></div>
+            <div id="table-seats-container"></div>
+        </div>
+
+        <div class="status-banner" id="status-msg">카드를 골라 터치해줘!</div>
+
+        <div class="deck-box">
+            <div class="deck-title">
+                <span>🃏 내 손패 카드 (터치해서 내기)</span>
+                <span id="hand-count">15장 남음</span>
+            </div>
+            <div id="my-hand" class="hand-container"></div>
+        </div>
+
+        <div class="deck-box">
+            <div class="deck-title">
+                <span>🏆 내가 얻은 점수 카드</span>
+                <span id="my-total-score" style="color: #e8590c;">현재 0점</span>
+            </div>
+            <div id="my-won-cards" class="hand-container" style="min-height: 68px; align-items: center;">
+                <span style="font-size: 0.8rem; color: #adb5bd;">아직 획득한 카드가 없어!</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- 4. 최종 결과 화면 -->
+    <div id="gameover-screen" class="hidden">
+        <h1>🎉 게임 종료! 최종 순위</h1>
+        <div id="final-rank-list"></div>
+        <button id="reset-btn" onclick="resetGame()" class="hidden" style="background: #20c997; margin-top: 15px;">🔄 대기실로 돌아가기 (새로하기)</button>
+        <p id="wait-host-msg" style="text-align: center; color: #666; font-size: 0.9rem;">방장이 새로하기 버튼을 누르면 대기실로 이동해!</p>
+    </div>
+
+<script>
+    const socket = io();
+    let activeRoomCode = '';
+
+    const SEATS = [
+        { color: 'red', label: '빨강 자리', hex: '#ff6b6b' },
+        { color: 'blue', label: '파랑 자리', hex: '#4dabf7' },
+        { color: 'green', label: '초록 자리', hex: '#51cf66' },
+        { color: 'orange', label: '주황 자리', hex: '#ffa94d' },
+        { color: 'purple', label: '보라 자리', hex: '#cc5de8' }
+    ];
+
+    const COLOR_HEX = {
+        red: '#ff6b6b', blue: '#4dabf7', green: '#51cf66', orange: '#ffa94d', purple: '#cc5de8'
+    };
+
+    const FLY_TARGETS = [
+        'translate(-50%, 70px) scale(0.3)',
+        'translate(-150px, -150px) scale(0.3)',
+        'translate(70px, -150px) scale(0.3)',
+        'translate(-165px, -50%) scale(0.3)',
+        'translate(85px, -50%) scale(0.3)'
+    ];
+
+    function createRoom() {
+        const name = document.getElementById('username').value.trim();
+        if (!name) { alert('이름을 먼저 입력해줘!'); return; }
+        socket.emit('create-room', name);
+    }
+
+    function joinRoom() {
+        const name = document.getElementById('username').value.trim();
+        const code = document.getElementById('room-code-input').value.trim();
+        if (!name) { alert('이름을 먼저 입력해줘!'); return; }
+        if (code.length !== 4) { alert('4자리 방 번호를 입력해줘!'); return; }
+        socket.emit('join-room', { roomCode: code, name });
+    }
+
+    function copyRoomCode() {
+        if (!activeRoomCode) return;
+        navigator.clipboard.writeText(activeRoomCode).then(() => {
+            alert(`방 번호 [${activeRoomCode}]가 복사됐어! 친구에게 붙여넣기 해줘.`);
+        });
+    }
+
+    function selectSeat(color) { socket.emit('select-seat', color); }
+    function toggleReady() { socket.emit('toggle-ready'); }
+    function startGame() { socket.emit('start-game'); }
+    function resetGame() { socket.emit('reset-game'); }
+
+    function confirmReset() {
+        if (confirm('현재 게임을 중단하고 대기실로 돌아가 새로 시작할까?')) {
+            socket.emit('reset-game');
+        }
+    }
+    
+    function playCard(val) { socket.emit('play-card', val); }
+    function padNumber(num) { return num < 10 ? '0' + num : '' + num; }
+
+    function escapeHtml(value) {
+        return String(value ?? '').replace(/[&<>\"']/g, (character) => ({
+            '&': '&amp;', '<': '&lt;', '>': '&gt;', '\"': '&quot;', "'": '&#39;'
+        }[character]));
+    }
+
+    socket.on('update-room', (state) => {
+        const myId = socket.id;
+        const me = state.players[myId];
+        const firstId = Object.keys(state.players)[0];
+        const isHost = (state.hostId || firstId) === myId;
+        activeRoomCode = state.roomCode;
+
+        if (state.gameState === 'LOBBY') {
+            if (!me) return;
+
+            document.getElementById('login-screen').classList.add('hidden');
+            document.getElementById('room-screen').classList.remove('hidden');
+            document.getElementById('game-screen').style.display = 'none';
+            document.getElementById('gameover-screen').classList.add('hidden');
+
+            document.getElementById('display-room-code').innerText = state.roomCode;
+
+            const allPlayers = Object.values(state.players);
+            const unseated = allPlayers.filter(p => p.color === null).map(p => p.name);
+            document.getElementById('unseated-list').innerText = 
+                unseated.length > 0 ? `👀 자리 고르는 중: ${unseated.join(', ')}` : '✨ 모두 자리에 앉았어!';
+
+            let gridHtml = '';
+            SEATS.forEach(seat => {
+                const occupant = allPlayers.find(p => p.color === seat.color);
+                if (occupant) {
+                    const isMe = occupant.id === myId;
+                    const statusText = occupant.ready ? '✅ 준비 완료' : '🪑 착석 (준비 대기)';
+                    gridHtml += `
+                        <div class="seat-slot occupied ${isMe ? 'my-seat' : ''}" style="border-color: ${seat.hex};">
+                            <div class="seat-info">
+                                <span class="seat-badge" style="background:${seat.hex};"></span>
+                                <span>${escapeHtml(occupant.name)} ${isMe ? '(나)' : ''}</span>
+                            </div>
+                            <div class="seat-status">${statusText}</div>
+                        </div>
+                    `;
+                } else {
+                    gridHtml += `
+                        <div class="seat-slot" onclick="selectSeat('${seat.color}')">
+                            <div class="seat-info">
+                                <span class="seat-badge" style="background:${seat.hex}; opacity:0.4;"></span>
+                                <span style="color:#868e96;">${seat.label} (비어있음 - 터치해 앉기)</span>
+                            </div>
+                            <div class="seat-status">➕ 착석하기</div>
+                        </div>
+                    `;
+                }
+            });
+            document.getElementById('seat-grid').innerHTML = gridHtml;
+
+            const readyBtn = document.getElementById('ready-btn');
+            if (!me.color) {
+                readyBtn.disabled = true;
+                readyBtn.innerText = "위에서 빈자리를 먼저 눌러 앉아줘!";
+                readyBtn.style.background = "#adb5bd";
+            } else {
+                readyBtn.disabled = false;
+                if (me.ready) {
+                    readyBtn.innerText = "준비 취소 (자리 이동 가능)";
+                    readyBtn.style.background = "#fa5252";
+                } else {
+                    readyBtn.innerText = "준비 완료!";
+                    readyBtn.style.background = "#20c997";
+                }
+            }
+
+            const seatedPlayers = allPlayers.filter(p => p.color !== null);
+            const allSeatedReady = seatedPlayers.length >= 2 && seatedPlayers.every(p => p.ready);
+            const allPlayersSeated = seatedPlayers.length === allPlayers.length;
+
+            if (isHost && allPlayersSeated && allSeatedReady) {
+                document.getElementById('start-btn').classList.remove('hidden');
+            } else {
+                document.getElementById('start-btn').classList.add('hidden');
+            }
+        } 
+        else if (state.gameState === 'PLAYING' || state.gameState === 'ROUND_RESULT') {
+            document.getElementById('login-screen').classList.add('hidden');
+            document.getElementById('room-screen').classList.add('hidden');
+            document.getElementById('gameover-screen').classList.add('hidden');
+            document.getElementById('game-screen').style.display = 'flex';
+
+            document.getElementById('round-info').innerText = `[방 ${state.roomCode}] 라운드 ${state.currentRound} / 15`;
+
+            if (isHost) {
+                document.getElementById('ingame-reset-btn').classList.remove('hidden');
+            } else {
+                document.getElementById('ingame-reset-btn').classList.add('hidden');
+            }
+
+            const seated = Object.values(state.players).filter(p => p.color !== null);
+            const myIndex = seated.findIndex(p => p.id === myId);
+            let orderedPlayers = [...seated];
+            if (myIndex > 0) {
+                orderedPlayers = [...seated.slice(myIndex), ...seated.slice(0, myIndex)];
+            }
+
+            const cards = state.tableScoreCards || [];
+            const centerZone = document.getElementById('center-score-zone');
+            centerZone.style.transform = 'translate(-50%, -50%)';
+            centerZone.style.opacity = '1';
+
+            let potTotal = cards.reduce((s, c) => s + c.value, 0);
+            let potText = potTotal > 0 ? `+${potTotal}점` : `${potTotal}점`;
+            let badgeHtml = cards.length > 1 ? `<div class="pot-badge">🔥 이월 누적 (${cards.length}장): 총 ${potText}</div>` : '';
+            
+            let cardsHtml = '<div class="center-cards-row">';
+            cards.forEach(c => {
+                let stackedClass = cards.length > 1 ? 'stacked' : '';
+                cardsHtml += `<img src="./images/cards_score/${c.file}.png" class="score-card-img ${stackedClass}" alt="점수카드">`;
+            });
+            cardsHtml += '</div>';
+            centerZone.innerHTML = badgeHtml + cardsHtml;
+
+            let seatsHtml = '';
+            let winnerPosIndex = -1;
+
+            orderedPlayers.forEach((p, idx) => {
+                const isWinner = (state.gameState === 'ROUND_RESULT' && state.lastWinnerId === p.id);
+                if (isWinner) winnerPosIndex = idx;
+
+                let cardSlotHtml = '';
+                if (p.playedCard !== null) {
+                    if (state.gameState === 'ROUND_RESULT') {
+                        let padded = padNumber(p.playedCard);
+                        cardSlotHtml = `<img src="./images/cards_75/card_${p.color}_${padded}.png" class="played-card-front" alt="낸 카드">`;
+                    } else {
+                        cardSlotHtml = `<div class="played-card-back">🐾</div>`;
+                    }
+                } else {
+                    cardSlotHtml = `<span style="font-size:0.7rem; color:rgba(255,255,255,0.7);">고르는 중</span>`;
+                }
+
+                const tagHtml = `<div class="player-tag ${isWinner ? 'winner-glow' : ''}" style="border-color: ${COLOR_HEX[p.color]};">
+                    ${escapeHtml(p.name)} (${p.score}점)
+                </div>`;
+                const slotBox = `<div class="played-card-slot">${cardSlotHtml}</div>`;
+
+                seatsHtml += `
+                    <div class="table-seat pos-${idx}">
+                        ${idx === 0 ? slotBox + tagHtml : tagHtml + slotBox}
+                    </div>
+                `;
+            });
+            document.getElementById('table-seats-container').innerHTML = seatsHtml;
+
+            if (state.gameState === 'ROUND_RESULT') {
+                let lastRes = state.roundResults[state.roundResults.length - 1];
+                document.getElementById('status-msg').innerHTML = `결과: <b>${escapeHtml(lastRes.winner)}</b>`;
+
+                if (winnerPosIndex !== -1) {
+                    setTimeout(() => {
+                        if (centerZone) {
+                            centerZone.style.transform = FLY_TARGETS[winnerPosIndex];
+                            centerZone.style.opacity = '0.2';
+                        }
+                    }, 1000);
+                }
+            } else {
+                if (me && me.playedCard !== null) {
+                    document.getElementById('status-msg').innerText = "카드를 냈어! 다른 친구들을 기다리는 중... ⏱️";
+                } else {
+                    let latestCard = cards[cards.length - 1];
+                    let ruleHint = latestCard && latestCard.type === 'cat'
+                        ? '🐱 고양이 카드! 가장 높은 숫자가 가져가!' 
+                        : '🐭 생쥐(-점수) 카드! 가장 낮은 숫자가 떠안아!';
+                    document.getElementById('status-msg').innerText = ruleHint;
+                }
+            }
+
+            let handHtml = '';
+            if (me && me.hand) {
+                document.getElementById('hand-count').innerText = `${me.hand.length}장 남음`;
+                me.hand.forEach(val => {
+                    let isPlayable = me.playedCard === null && state.gameState === 'PLAYING';
+                    let clickAction = isPlayable ? `playCard(${val})` : '';
+                    let paddedNum = padNumber(val);
+                    let cardImgPath = `./images/cards_75/card_${me.color}_${paddedNum}.png`;
+
+                    handHtml += `<div class="hand-card-item" onclick="${clickAction}">
+                        <img src="${cardImgPath}" class="card-img" alt="카드 ${val}">
+                    </div>`;
+                });
+            }
+            document.getElementById('my-hand').innerHTML = handHtml;
+
+            if (me) {
+                document.getElementById('my-total-score').innerText = `현재 ${me.score}점`;
+                const wonContainer = document.getElementById('my-won-cards');
+                if (me.wonCards && me.wonCards.length > 0) {
+                    let wonHtml = '';
+                    me.wonCards.forEach(wc => {
+                        wonHtml += `<img src="./images/cards_score/${wc.file}.png" class="won-card-img" alt="획득카드">`;
+                    });
+                    wonContainer.innerHTML = wonHtml;
+                } else {
+                    wonContainer.innerHTML = `<span style="font-size: 0.8rem; color: #adb5bd;">아직 획득한 카드가 없어!</span>`;
+                }
+            }
+        }
+        else if (state.gameState === 'GAME_OVER') {
+            document.getElementById('login-screen').classList.add('hidden');
+            document.getElementById('room-screen').classList.add('hidden');
+            document.getElementById('game-screen').style.display = 'none';
+            document.getElementById('gameover-screen').classList.remove('hidden');
+
+            let sortedPlayers = Object.values(state.players).filter(p => p.color !== null).sort((a,b) => b.score - a.score);
+            let rankHtml = '';
+            sortedPlayers.forEach((p, idx) => {
+                let medal = idx === 0 ? '👑 1위' : `${idx + 1}위`;
+                rankHtml += `<div class="rank-item ${idx === 0 ? 'rank-1' : ''}">
+                    <span>${medal}: ${escapeHtml(p.name)}</span>
+                    <span><b>${p.score}점</b></span>
+                </div>`;
+            });
+            document.getElementById('final-rank-list').innerHTML = rankHtml;
+
+            if (isHost) {
+                document.getElementById('reset-btn').classList.remove('hidden');
+                document.getElementById('wait-host-msg').classList.add('hidden');
+            } else {
+                document.getElementById('reset-btn').classList.add('hidden');
+                document.getElementById('wait-host-msg').classList.remove('hidden');
+            }
+        }
+    });
+
+    socket.on('error-msg', (msg) => alert(msg));
+</script>
+</body>
+</html>
