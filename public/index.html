@@ -164,7 +164,7 @@
         #game-screen.dobble-mode #status-msg,
         #game-screen.dobble-mode #hand-box { display: none; }
         #game-screen.dobble-mode #won-box { padding: 8px 12px; }
-        .dobble-arena { height: min(78vh, 700px); min-height: 560px; }
+        .dobble-arena { height: min(82vh, 730px); min-height: 560px; }
         .dobble-arena #table-seats-container {
             position: absolute; inset: 8px 8px auto; z-index: 18;
             display: flex; align-items: center; justify-content: center;
@@ -197,10 +197,10 @@
             color: #fff; font-size: .78rem; font-weight: 900; letter-spacing: .02em;
             text-shadow: 0 1px 4px rgba(0,0,0,.65);
         }
-        #dobble-own-card { width: min(66vw, 232px, 30vh); }
-        #dobble-center-card { width: min(66vw, 232px, 30vh); }
+        #dobble-own-card { width: min(68vw, 250px, 30vh); }
+        #dobble-center-card { width: min(68vw, 250px, 30vh); }
         .dobble-toast {
-            position: absolute; left: 50%; top: 50%; z-index: 40;
+            position: absolute; left: 50%; top: 86px; z-index: 40;
             max-width: calc(100% - 28px); padding: 10px 16px; border-radius: 999px;
             background: rgba(255,255,255,.97); color: #8a3c16; border: 2px solid #ffd166;
             box-shadow: 0 5px 18px rgba(0,0,0,.28); font-size: .95rem; font-weight: 900;
@@ -210,11 +210,11 @@
         }
         .dobble-toast.show { opacity: 1; transform: translate(-50%, -50%) scale(1); }
         @media (max-width: 480px) {
-            .dobble-arena { height: min(78vh, 700px); min-height: 560px; }
+            .dobble-arena { height: min(82vh, 730px); min-height: 560px; }
             .dobble-arena .table-seat { max-width: 112px; grid-template-columns: 27px minmax(20px, auto) 27px; gap: 2px; }
             .dobble-arena .dobble-avatar { width: 27px; height: 27px; }
             .dobble-arena .dobble-pile-stack { width: 27px; }
-            #dobble-own-card, #dobble-center-card { width: min(66vw, 232px, 30vh); }
+            #dobble-own-card, #dobble-center-card { width: min(68vw, 250px, 30vh); }
         }
         @keyframes flipIn { 0% { transform: scaleX(0); } 100% { transform: scaleX(1); } }
 
@@ -307,11 +307,11 @@
         .dobble-symbol {
             position: absolute; display: flex; align-items: center; justify-content: center;
             margin: 0; padding: 0; border: 0; border-radius: 9px; background: transparent;
-            box-shadow: none; cursor: pointer; transform: translate(-50%, -50%); touch-action: manipulation;
+            box-shadow: none; cursor: pointer; transform: translate(-50%, -50%) rotate(var(--symbol-rotation, 0deg)); touch-action: manipulation;
         }
         .dobble-symbol:disabled { cursor: not-allowed; filter: grayscale(0.25); opacity: 0.75; }
         .dobble-symbol img { display: block; width: 100%; height: 100%; border-radius: 9px; object-fit: contain; }
-        .dobble-symbol:hover:not(:disabled) { z-index: 3; transform: translate(-50%, -50%) scale(1.12); }
+        .dobble-symbol:hover:not(:disabled) { z-index: 3; transform: translate(-50%, -50%) rotate(var(--symbol-rotation, 0deg)) scale(1.12); }
         #center-score-zone > .dobble-card-host { width: min(62vw, 245px); }
         #my-hand .dobble-card-host { width: min(55vw, 215px); }
         #my-hand.dobble-own-card-row { justify-content: center; overflow: visible; }
@@ -631,6 +631,27 @@
         { left: 40, top: 51, size: 24, rotate: -5 },
         { left: 63, top: 53, size: 20, rotate: 11 }
     ];
+
+    function seededDobbleRandom(seed) {
+        const value = Math.sin(seed * 12.9898) * 43758.5453;
+        return value - Math.floor(value);
+    }
+
+    function getDobbleSymbolLayout(card, index, symbolId) {
+        const cardId = Number(card.id) || 0;
+        const base = DOBBLE_LAYOUT[(index + cardId) % DOBBLE_LAYOUT.length];
+        const seed = (cardId + 1) * 1009 + (symbolId + 1) * 9176 + index * 37;
+        const jitterX = (seededDobbleRandom(seed + 1) - 0.5) * 11;
+        const jitterY = (seededDobbleRandom(seed + 2) - 0.5) * 11;
+        const scale = 0.7 + seededDobbleRandom(seed + 3) * 0.5;
+        const rotate = Math.round(-35 + seededDobbleRandom(seed + 4) * 70);
+        return {
+            left: Math.max(14, Math.min(86, base.left + jitterX)),
+            top: Math.max(14, Math.min(86, base.top + jitterY)),
+            size: base.size * scale,
+            rotate
+        };
+    }
     let lastDobbleCardVersion = null;
     let lastDobbleLockUntil = 0;
     let lastDobbleLockVersion = null;
@@ -653,7 +674,7 @@
         const circle = document.createElement('div');
         circle.className = 'dobble-card';
         card.symbols.forEach((symbolId, index) => {
-            const layout = DOBBLE_LAYOUT[(index + (card.id || 0)) % DOBBLE_LAYOUT.length];
+            const layout = getDobbleSymbolLayout(card, index, symbolId);
             const item = clickable ? document.createElement('button') : document.createElement('div');
             if (clickable) {
                 item.type = 'button';
@@ -668,7 +689,7 @@
             item.style.top = layout.top + '%';
             item.style.width = layout.size + '%';
             item.style.height = layout.size + '%';
-            item.style.transform = `translate(-50%, -50%) rotate(${layout.rotate}deg)`;
+            item.style.setProperty('--symbol-rotation', `${layout.rotate}deg`);
 
             const img = document.createElement('img');
             img.src = `./images/dobble/cat_${String(symbolId + 1).padStart(2, '0')}.png`;
@@ -765,12 +786,12 @@
         duel.className = 'dobble-duel';
         duel.innerHTML = `
             <section class="dobble-table-card">
-                <div class="dobble-table-card-label">내 카드</div>
-                <div id="dobble-own-card" class="dobble-card-host"></div>
+                <div class="dobble-table-card-label">덱</div>
+                <div id="dobble-center-card" class="dobble-card-host"></div>
             </section>
             <section class="dobble-table-card">
-                <div class="dobble-table-card-label">가운데 카드 · 같은 고양이를 눌러요</div>
-                <div id="dobble-center-card" class="dobble-card-host"></div>
+                <div class="dobble-table-card-label">내 카드</div>
+                <div id="dobble-own-card" class="dobble-card-host"></div>
             </section>`;
         centerZone.appendChild(duel);
         renderDobbleCard('dobble-own-card', ownCard, false, version, true);
