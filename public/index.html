@@ -164,7 +164,7 @@
         #game-screen.dobble-mode #status-msg,
         #game-screen.dobble-mode #hand-box { display: none; }
         #game-screen.dobble-mode #won-box { padding: 8px 12px; }
-        .dobble-arena { height: min(82vh, 730px); min-height: 560px; }
+        .dobble-arena { height: min(96vh, 900px); min-height: 840px; }
         .dobble-arena #table-seats-container {
             position: absolute; inset: 8px 8px auto; z-index: 18;
             display: flex; align-items: center; justify-content: center;
@@ -189,7 +189,7 @@
             display: block; z-index: 10;
         }
         .dobble-duel {
-            position: absolute; inset: 96px 0 12px; display: flex; flex-direction: column;
+            position: absolute; inset: 88px 0 10px; display: flex; flex-direction: column;
             align-items: center; justify-content: space-around; z-index: 10;
         }
         .dobble-table-card { display: flex; flex-direction: column; align-items: center; gap: 2px; }
@@ -197,8 +197,8 @@
             color: #fff; font-size: .78rem; font-weight: 900; letter-spacing: .02em;
             text-shadow: 0 1px 4px rgba(0,0,0,.65);
         }
-        #dobble-own-card { width: min(68vw, 250px, 30vh); }
-        #dobble-center-card { width: min(68vw, 250px, 30vh); }
+        #dobble-own-card { width: min(86vw, 350px); }
+        #dobble-center-card { width: min(86vw, 350px); }
         .dobble-toast {
             position: absolute; left: 50%; top: 86px; z-index: 40;
             max-width: calc(100% - 28px); padding: 10px 16px; border-radius: 999px;
@@ -210,12 +210,14 @@
         }
         .dobble-toast.show { opacity: 1; transform: translate(-50%, -50%) scale(1); }
         @media (max-width: 480px) {
-            .dobble-arena { height: min(82vh, 730px); min-height: 560px; }
+            .dobble-arena { height: min(96vh, 900px); min-height: 840px; }
             .dobble-arena .table-seat { max-width: 112px; grid-template-columns: 27px minmax(20px, auto) 27px; gap: 2px; }
             .dobble-arena .dobble-avatar { width: 27px; height: 27px; }
             .dobble-arena .dobble-pile-stack { width: 27px; }
-            #dobble-own-card, #dobble-center-card { width: min(68vw, 250px, 30vh); }
+            #dobble-own-card, #dobble-center-card { width: min(86vw, 350px); }
         }
+        .dobble-assets-status { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+        .dobble-assets-retry { width: auto; margin: 0; padding: 6px 10px; background: #339af0; font-size: .82rem; }
         @keyframes flipIn { 0% { transform: scaleX(0); } 100% { transform: scaleX(1); } }
 
         .status-banner {
@@ -391,10 +393,15 @@
         </div>
         <div class="rule-guide-box hidden" id="dobble-rule-guide">
             <b>📜 냥이 도블</b><br>
-            • 내 카드와 가운데 카드에서 똑같은 고양이를 찾아요.<br>
-            • 가운데 카드의 고양이를 누르면 그 카드를 가져와요.<br>
-            • 틀리면 3초 쉬어요. 가운데 카드가 바뀌면 바로 다시 할 수 있어요.<br>
-            • 가운데 덱이 비면 카드를 가장 많이 모은 사람이 이겨요!
+            • 내 카드와 덱에서 똑같은 고양이를 찾아요.<br>
+            • 덱에서 같은 고양이를 누르면 그 카드를 가져와요.<br>
+            • 틀리면 3초 쉬어요. 덱 카드가 바뀌면 바로 다시 할 수 있어요.<br>
+            • 덱이 비면 카드를 가장 많이 모은 사람이 이겨요!
+        </div>
+
+        <div id="dobble-assets-status" class="lobby-waiting-box dobble-assets-status hidden" role="status" aria-live="polite">
+            <span id="dobble-assets-message">🐱 고양이 카드 불러오는 중 0/57</span>
+            <button id="dobble-assets-retry" class="dobble-assets-retry hidden" type="button" onclick="retryDobbleAssets()">다시 시도</button>
         </div>
 
         <div id="unseated-list" class="lobby-waiting-box">접속 중: 없음</div>
@@ -441,12 +448,12 @@
     <div id="dobble-screen">
         <div class="dobble-topbar">
             <span>🐱 냥이 도블</span>
-            <span class="dobble-progress" id="dobble-progress">가운데 덱 0장</span>
+            <span class="dobble-progress" id="dobble-progress">덱 0장</span>
         </div>
         <div id="dobble-scoreboard" class="dobble-scoreboard"></div>
         <div class="dobble-board">
             <section class="dobble-section">
-                <div class="dobble-section-title">가운데 카드 덱</div>
+                <div class="dobble-section-title">덱</div>
                 <div class="dobble-deck-count" id="dobble-center-count">0장 남음</div>
                 <div id="dobble-center-card" class="dobble-card-host"></div>
             </section>
@@ -457,7 +464,7 @@
                 <div id="dobble-own-card" class="dobble-card-host"></div>
             </section>
         </div>
-        <div class="dobble-help">가운데 카드에 있는 공통 고양이를 눌러 카드를 가져와요.</div>
+        <div class="dobble-help">덱에서 내 카드와 같은 고양이를 눌러요.</div>
     </div>
 
     <!-- 4. 최종 결과 화면 -->
@@ -486,6 +493,105 @@
 <script>
     const socket = io();
     let activeRoomCode = '';
+    const DOBBLE_ASSET_COUNT = 57;
+    let dobbleImageCache = new Array(DOBBLE_ASSET_COUNT + 1).fill(null);
+    let dobbleAssetsLoaded = 0;
+    let dobbleAssetsFailed = 0;
+    let dobbleAssetsReady = false;
+    let dobbleAssetsLoading = false;
+    let latestLobbyPlayer = null;
+    let latestLobbyGameMode = 'EYE';
+
+    function updateLobbyReadyButton() {
+        if (!latestLobbyPlayer) return;
+        const button = document.getElementById('ready-btn');
+        if (latestLobbyGameMode === 'DOBBLE' && !dobbleAssetsReady) {
+            button.disabled = true;
+            button.innerText = dobbleAssetsLoading
+                ? `🐱 카드 준비 중 ${dobbleAssetsLoaded + dobbleAssetsFailed}/${DOBBLE_ASSET_COUNT}`
+                : '🐱 카드 로딩을 기다려줘';
+            button.style.background = '#adb5bd';
+            return;
+        }
+        if (!latestLobbyPlayer.color) {
+            button.disabled = true;
+            button.innerText = '위에서 빈자리를 먼저 눌러 앉아줘!';
+            button.style.background = '#adb5bd';
+        } else {
+            button.disabled = false;
+            if (latestLobbyPlayer.ready) {
+                button.innerText = '준비 취소 (자리 이동 가능)';
+                button.style.background = '#fa5252';
+            } else {
+                button.innerText = '준비 완료!';
+                button.style.background = '#20c997';
+            }
+        }
+    }
+
+    function preloadDobbleAssets() {
+        if (dobbleAssetsReady || dobbleAssetsLoading) return;
+        dobbleAssetsLoading = true;
+        dobbleAssetsLoaded = 0;
+        dobbleAssetsFailed = 0;
+
+        const statusBox = document.getElementById('dobble-assets-status');
+        const statusText = document.getElementById('dobble-assets-message');
+        const retryButton = document.getElementById('dobble-assets-retry');
+        statusBox.classList.remove('hidden');
+        retryButton.classList.add('hidden');
+        statusText.textContent = `🐱 고양이 카드 불러오는 중 0/${DOBBLE_ASSET_COUNT}`;
+        updateLobbyReadyButton();
+
+        const tasks = [];
+        for (let symbol = 1; symbol <= DOBBLE_ASSET_COUNT; symbol++) {
+            tasks.push(new Promise((resolve) => {
+                const image = new Image();
+                dobbleImageCache[symbol] = image;
+                let settled = false;
+                const finish = (ok) => {
+                    if (settled) return;
+                    settled = true;
+                    if (ok) dobbleAssetsLoaded++;
+                    else dobbleAssetsFailed++;
+                    statusText.textContent = `🐱 고양이 카드 불러오는 중 ${dobbleAssetsLoaded + dobbleAssetsFailed}/${DOBBLE_ASSET_COUNT}`;
+                    updateLobbyReadyButton();
+                    resolve(ok);
+                };
+                const decode = () => {
+                    if (typeof image.decode === 'function') {
+                        image.decode().then(() => finish(true)).catch(() => finish(image.naturalWidth > 0));
+                    } else {
+                        finish(image.naturalWidth > 0);
+                    }
+                };
+                image.onload = decode;
+                image.onerror = () => finish(false);
+                image.src = `./images/dobble/cat_${String(symbol).padStart(2, '0')}.png`;
+                if (image.complete && image.naturalWidth > 0) decode();
+            }));
+        }
+
+        Promise.all(tasks).then((results) => {
+            dobbleAssetsLoading = false;
+            dobbleAssetsFailed = results.filter((loaded) => !loaded).length;
+            if (dobbleAssetsFailed) {
+                statusText.textContent = `이미지 ${dobbleAssetsFailed}장을 불러오지 못했어. 다시 시도해줘.`;
+                retryButton.classList.remove('hidden');
+            } else {
+                dobbleAssetsReady = true;
+                statusText.textContent = '✅ 고양이 카드 준비 완료! 자리에 앉고 준비해줘.';
+                retryButton.classList.add('hidden');
+            }
+            updateLobbyReadyButton();
+        });
+    }
+
+    function retryDobbleAssets() {
+        dobbleAssetsReady = false;
+        dobbleImageCache = new Array(DOBBLE_ASSET_COUNT + 1).fill(null);
+        preloadDobbleAssets();
+    }
 
     const SEATS = [
         { color: 'red', label: '빨강 자리', hex: '#ff6b6b' },
@@ -530,8 +636,14 @@
     }
 
     function selectSeat(color) { socket.emit('select-seat', color); }
-    function toggleReady() { socket.emit('toggle-ready'); }
-    function startGame() { socket.emit('start-game'); }
+    function toggleReady() {
+        if (latestLobbyGameMode === 'DOBBLE' && !dobbleAssetsReady) return;
+        socket.emit('toggle-ready');
+    }
+    function startGame() {
+        if (latestLobbyGameMode === 'DOBBLE' && !dobbleAssetsReady) return;
+        socket.emit('start-game');
+    }
     function resetGame() { socket.emit('reset-game'); }
 
     function confirmReset() {
@@ -691,8 +803,11 @@
             item.style.height = layout.size + '%';
             item.style.setProperty('--symbol-rotation', `${layout.rotate}deg`);
 
-            const img = document.createElement('img');
-            img.src = `./images/dobble/cat_${String(symbolId + 1).padStart(2, '0')}.png`;
+            const cachedImage = dobbleImageCache[symbolId + 1];
+            const img = cachedImage ? cachedImage.cloneNode(false) : document.createElement('img');
+            if (!img.getAttribute('src')) {
+                img.src = `./images/dobble/cat_${String(symbolId + 1).padStart(2, '0')}.png`;
+            }
             img.alt = `고양이 ${symbolId + 1}`;
             img.draggable = false;
             item.appendChild(img);
@@ -728,14 +843,19 @@
 
     function animateDobbleClaim(claim) {
         const startElement = document.querySelector('#dobble-center-card');
-        const targetElement = document.querySelector(`#table-seats-container .table-seat[data-player-id="${CSS.escape(claim.winnerId)}"] .dobble-pile-stack`);
+        // Socket IDs should normally both be strings, but normalize them so the
+        // local winner always receives the card at the lower "내 카드" position.
+        const isLocalWinner = String(claim.winnerId) === String(socket.id);
+        const targetElement = isLocalWinner
+            ? document.querySelector('#dobble-own-card')
+            : document.querySelector(`#table-seats-container .table-seat[data-player-id="${CSS.escape(claim.winnerId)}"] .dobble-pile-stack`);
         if (!startElement || !targetElement) return;
         const start = startElement.getBoundingClientRect();
         const target = targetElement.getBoundingClientRect();
         const fly = document.createElement('div');
         fly.id = `dobble-fly-${++dobbleFlyCounter}`;
         fly.className = 'dobble-card-host dobble-flying-host';
-        const size = Math.min(150, Math.max(112, start.width * 0.72));
+        const size = Math.min(240, Math.max(150, start.width * 0.72));
         Object.assign(fly.style, {
             position: 'fixed', left: `${start.left + start.width / 2}px`, top: `${start.top + start.height / 2}px`,
             width: `${size}px`, height: `${size}px`, transform: 'translate(-50%, -50%) scale(1)', opacity: '1',
@@ -772,7 +892,7 @@
 
         document.getElementById('game-screen').classList.add('dobble-mode');
         document.getElementById('table-arena').classList.add('dobble-arena');
-        document.getElementById('round-info').textContent = `방 ${state.roomCode} · 냥이 도블 · 가운데 ${centerCount}장`;
+        document.getElementById('round-info').textContent = `방 ${state.roomCode} · 냥이 도블 · 덱 ${centerCount}장`;
         document.getElementById('hand-title').textContent = '내 카드';
         document.getElementById('hand-count').textContent = `모은 카드 ${me?.dobbleCardCount || 0}장`;
         document.getElementById('won-title').textContent = '내가 모은 카드';
@@ -815,7 +935,7 @@
             more.textContent = `+${pileCount - 4}장`;
             pile.appendChild(more);
         }
-        if (!pileCount) pile.innerHTML = '<span style="font-size:.85rem;color:#adb5bd">가운데 카드에서 찾아 모아봐!</span>';
+        if (!pileCount) pile.innerHTML = '<span style="font-size:.85rem;color:#adb5bd">덱에서 찾아 모아봐!</span>';
 
         const claim = state.lastDobbleClaim;
         const hasNewClaim = claim && claim.id !== lastDobbleAnimatedId;
@@ -842,7 +962,7 @@
                 const seconds = Math.max(0, Math.ceil((lockUntil - Date.now()) / 1000));
                 document.getElementById('round-info').textContent = seconds > 0
                     ? `방 ${state.roomCode} · 냥이 도블 · 잠깐 쉬기 ${seconds}초`
-                    : `방 ${state.roomCode} · 냥이 도블 · 가운데 ${centerCount}장`;
+                    : `방 ${state.roomCode} · 냥이 도블 · 덱 ${centerCount}장`;
                 if (seconds <= 0) {
                     if (dobbleLockTimer) clearInterval(dobbleLockTimer);
                     dobbleLockTimer = null;
@@ -884,10 +1004,14 @@
 
             document.getElementById('display-room-code').innerText = state.roomCode;
             const isDobbleRoom = state.gameMode === 'DOBBLE';
+            latestLobbyPlayer = me;
+            latestLobbyGameMode = state.gameMode || 'EYE';
             document.getElementById('display-game-mode').innerText = isDobbleRoom ? '🐱 냥이 도블' : '😼 냥이 눈치게임';
             document.getElementById('eye-rule-guide').classList.toggle('hidden', isDobbleRoom);
             document.getElementById('dobble-rule-guide').classList.toggle('hidden', !isDobbleRoom);
             document.getElementById('dobble-screen').style.display = 'none';
+            document.getElementById('dobble-assets-status').classList.toggle('hidden', !isDobbleRoom);
+            if (isDobbleRoom) preloadDobbleAssets();
 
             const allPlayers = Object.values(state.players);
             const unseated = allPlayers.filter(p => p.color === null).map(p => p.name);
@@ -923,27 +1047,13 @@
             });
             document.getElementById('seat-grid').innerHTML = gridHtml;
 
-            const readyBtn = document.getElementById('ready-btn');
-            if (!me.color) {
-                readyBtn.disabled = true;
-                readyBtn.innerText = "위에서 빈자리를 먼저 눌러 앉아줘!";
-                readyBtn.style.background = "#adb5bd";
-            } else {
-                readyBtn.disabled = false;
-                if (me.ready) {
-                    readyBtn.innerText = "준비 취소 (자리 이동 가능)";
-                    readyBtn.style.background = "#fa5252";
-                } else {
-                    readyBtn.innerText = "준비 완료!";
-                    readyBtn.style.background = "#20c997";
-                }
-            }
+            updateLobbyReadyButton();
 
             const seatedPlayers = allPlayers.filter(p => p.color !== null);
             const allSeatedReady = seatedPlayers.length >= 2 && seatedPlayers.every(p => p.ready);
             const allPlayersSeated = seatedPlayers.length === allPlayers.length;
 
-            if (isHost && allPlayersSeated && allSeatedReady) {
+            if (isHost && allPlayersSeated && allSeatedReady && (!isDobbleRoom || dobbleAssetsReady)) {
                 document.getElementById('start-btn').classList.remove('hidden');
             } else {
                 document.getElementById('start-btn').classList.add('hidden');
