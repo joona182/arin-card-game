@@ -239,6 +239,18 @@
             width: auto; margin: 0; padding: 12px 16px; border-radius: 999px;
             box-shadow: 0 4px 14px rgba(0,0,0,0.25);
         }
+        .chat-unread-badge {
+            position: absolute; top: -5px; right: -5px; width: 23px; height: 23px;
+            display: flex; align-items: center; justify-content: center;
+            margin: 0; padding: 0; border: 2px solid #fff; border-radius: 50%;
+            background: #f03e3e; color: #fff; font-size: 15px; font-weight: 900;
+            line-height: 1; box-shadow: 0 2px 7px rgba(0,0,0,.3);
+            animation: chatBadgePop .22s ease-out;
+        }
+        @keyframes chatBadgePop {
+            from { transform: scale(.4); opacity: .3; }
+            to { transform: scale(1); opacity: 1; }
+        }
         .chat-panel {
             position: fixed; right: 16px; bottom: 76px; z-index: 1000;
             width: min(350px, calc(100vw - 24px)); height: min(430px, 65vh);
@@ -456,7 +468,9 @@
         <p id="wait-host-msg" style="text-align: center; color: #666; font-size: 0.9rem;">방장이 새로하기 버튼을 누르면 대기실로 이동해!</p>
     </div>
 
-    <button id="chat-toggle" class="chat-toggle hidden" type="button" aria-controls="chat-panel" aria-expanded="false">💬 채팅</button>
+    <button id="chat-toggle" class="chat-toggle hidden" type="button" aria-controls="chat-panel" aria-expanded="false" aria-label="채팅 열기">
+        💬 채팅<span id="chat-unread-badge" class="chat-unread-badge hidden" aria-label="읽지 않은 새 채팅" role="status">!</span>
+    </button>
     <section id="chat-panel" class="chat-panel hidden" aria-label="방 채팅">
         <div class="chat-header">
             <strong>💬 방 채팅</strong>
@@ -565,9 +579,16 @@
         const container = document.getElementById('chat-messages');
         container.replaceChildren();
         if (Array.isArray(messages)) messages.forEach(appendChatMessage);
+        document.getElementById('chat-unread-badge').classList.add('hidden');
     });
 
-    socket.on('chat-message', appendChatMessage);
+    socket.on('chat-message', (message) => {
+        appendChatMessage(message);
+        const panelIsClosed = document.getElementById('chat-panel').classList.contains('hidden');
+        if (panelIsClosed) {
+            document.getElementById('chat-unread-badge').classList.remove('hidden');
+        }
+    });
 
     document.getElementById('chat-form').addEventListener('submit', (event) => {
         event.preventDefault();
@@ -581,15 +602,23 @@
 
     const chatToggle = document.getElementById('chat-toggle');
     const chatPanel = document.getElementById('chat-panel');
+    const chatUnreadBadge = document.getElementById('chat-unread-badge');
     chatToggle.addEventListener('click', () => {
         const isOpening = chatPanel.classList.contains('hidden');
         chatPanel.classList.toggle('hidden', !isOpening);
         chatToggle.setAttribute('aria-expanded', String(isOpening));
-        if (isOpening) document.getElementById('chat-input').focus();
+        if (isOpening) {
+            chatUnreadBadge.classList.add('hidden');
+            chatToggle.setAttribute('aria-label', '채팅 닫기');
+            document.getElementById('chat-input').focus();
+        } else {
+            chatToggle.setAttribute('aria-label', '채팅 열기');
+        }
     });
     document.getElementById('chat-close').addEventListener('click', () => {
         chatPanel.classList.add('hidden');
         chatToggle.setAttribute('aria-expanded', 'false');
+        chatToggle.setAttribute('aria-label', '채팅 열기');
     });
 
     const DOBBLE_LAYOUT = [
