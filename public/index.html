@@ -200,7 +200,7 @@
         #dobble-own-card { width: min(86vw, 350px); }
         #dobble-center-card { width: min(86vw, 350px); }
         .dobble-toast {
-            position: absolute; left: 50%; top: 86px; z-index: 40;
+            position: absolute; left: 50%; top: 50%; z-index: 40;
             max-width: calc(100% - 28px); padding: 10px 16px; border-radius: 999px;
             background: rgba(255,255,255,.97); color: #8a3c16; border: 2px solid #ffd166;
             box-shadow: 0 5px 18px rgba(0,0,0,.28); font-size: .95rem; font-weight: 900;
@@ -835,6 +835,14 @@
 
     function showDobbleToast(message) {
         const toast = document.getElementById('dobble-toast');
+        const arena = document.getElementById('table-arena');
+        const deck = document.getElementById('dobble-center-card');
+        if (arena && deck && document.getElementById('game-screen').classList.contains('dobble-mode')) {
+            const arenaRect = arena.getBoundingClientRect();
+            const deckRect = deck.getBoundingClientRect();
+            toast.style.left = `${deckRect.left + deckRect.width / 2 - arenaRect.left}px`;
+            toast.style.top = `${deckRect.top + deckRect.height / 2 - arenaRect.top}px`;
+        }
         if (dobbleToastTimer) clearTimeout(dobbleToastTimer);
         toast.textContent = message;
         toast.classList.add('show');
