@@ -133,7 +133,12 @@ function snapshotFor(room, viewerId) {
             ? { ...room.dobbleCenterCard, symbols: [...room.dobbleCenterCard.symbols] }
             : null,
         dobbleDeckCount: (room.dobbleDeck?.length || 0) + (room.dobbleCenterCard ? 1 : 0),
-        dobbleCardVersion: room.dobbleCardVersion || 0
+        dobbleCardVersion: room.dobbleCardVersion || 0,
+        lastDobbleClaim: room.lastDobbleClaim ? {
+            id: room.lastDobbleClaim.id,
+            winnerId: room.lastDobbleClaim.winnerId,
+            card: { ...room.lastDobbleClaim.card, symbols: [...room.lastDobbleClaim.card.symbols] }
+        } : null
     };
 }
 
@@ -221,7 +226,8 @@ io.on('connection', (socket) => {
             chatMessages: [],
             dobbleDeck: [],
             dobbleCenterCard: null,
-            dobbleCardVersion: 0
+            dobbleCardVersion: 0,
+            lastDobbleClaim: null
         };
         rooms.set(roomCode, room);
         joinRoomLogic(room, createData.name);
@@ -336,6 +342,7 @@ io.on('connection', (socket) => {
         room.dobbleDeck = [];
         room.dobbleCenterCard = null;
         room.dobbleCardVersion = 0;
+        room.lastDobbleClaim = null;
 
         seatedPlayers.forEach((player) => {
             player.score = 0;
@@ -385,6 +392,7 @@ io.on('connection', (socket) => {
         room.dobbleDeck = [];
         room.dobbleCenterCard = null;
         room.dobbleCardVersion = 0;
+        room.lastDobbleClaim = null;
 
         Object.values(room.players).forEach((player) => {
             player.ready = false;
@@ -427,10 +435,16 @@ io.on('connection', (socket) => {
             return;
         }
 
-        player.dobbleStack.push(room.dobbleCenterCard);
+        const claimedCard = room.dobbleCenterCard;
+        player.dobbleStack.push(claimedCard);
         player.score = player.dobbleStack.length;
         room.dobbleCenterCard = room.dobbleDeck.pop() || null;
         room.dobbleCardVersion += 1;
+        room.lastDobbleClaim = {
+            id: room.dobbleCardVersion,
+            winnerId: player.id,
+            card: claimedCard
+        };
 
         for (const other of Object.values(room.players)) {
             other.dobbleLockedUntil = 0;
