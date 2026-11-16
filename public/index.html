@@ -19,6 +19,9 @@
         .join-row { display: flex; gap: 8px; }
         .join-row input { width: 45%; text-align: center; font-weight: bold; letter-spacing: 2px; }
         .join-row button { width: 55%; background: #339af0; }
+        .mode-label { display: block; margin-top: 12px; color: #495057; font-size: 0.88rem; font-weight: bold; }
+        .mode-select { width: 100%; padding: 12px; margin: 6px 0; border: 1px solid #ced4da; border-radius: 8px; background: #fff; font-size: 1rem; }
+        .room-game-name { color: #d9480f; font-weight: bold; font-size: 0.9rem; margin-top: 3px; }
 
         /* 방 번호 표시 배지 */
         .room-code-banner {
@@ -181,6 +184,58 @@
             .chat-panel { right: 12px; bottom: 70px; width: calc(100vw - 24px); height: min(420px, 60vh); }
         }
 
+        #dobble-screen {
+            width: 100%; max-width: 480px; display: none; flex-direction: column;
+            gap: 10px; margin: 8px auto 70px;
+        }
+        .dobble-topbar, .dobble-section, .dobble-scoreboard {
+            background: #fff; border-radius: 14px; padding: 12px;
+            box-shadow: 0 2px 7px rgba(0,0,0,0.08);
+        }
+        .dobble-topbar { display: flex; justify-content: space-between; align-items: center; font-weight: bold; }
+        .dobble-progress { color: #d9480f; }
+        .dobble-section { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+        .dobble-section-title { font-size: 0.9rem; font-weight: bold; color: #495057; }
+        .dobble-card-host { position: relative; width: min(68vw, 270px); aspect-ratio: 1; }
+        .dobble-card {
+            position: absolute; inset: 5%; overflow: hidden; border-radius: 50%;
+            border: 5px solid #f4c56a;
+            background: radial-gradient(circle at 35% 28%, #fffefb, #fff5e4 78%);
+            box-shadow: 0 5px 12px rgba(93,61,28,0.22);
+        }
+        .dobble-card-host::before, .dobble-card-host::after {
+            content: ''; position: absolute; inset: 9%; border-radius: 50%;
+            background: #f3e3c8; border: 2px solid #ead1a8;
+        }
+        .dobble-card-host::before { transform: translate(4px, 5px); }
+        .dobble-card-host::after { transform: translate(2px, 2px); }
+        .dobble-card { z-index: 1; }
+        .dobble-symbol {
+            position: absolute; display: flex; align-items: center; justify-content: center;
+            padding: 0; border: 0; border-radius: 9px; background: transparent;
+            box-shadow: none; cursor: pointer; transform: translate(-50%, -50%); touch-action: manipulation;
+        }
+        .dobble-symbol:disabled { cursor: not-allowed; filter: grayscale(0.25); opacity: 0.75; }
+        .dobble-symbol img { display: block; width: 100%; height: 100%; border-radius: 9px; object-fit: contain; }
+        .dobble-symbol:hover:not(:disabled) { z-index: 3; transform: translate(-50%, -50%) scale(1.12); }
+        .dobble-deck-count, .dobble-own-count { color: #d9480f; font-size: 0.85rem; font-weight: bold; }
+        .dobble-status {
+            min-height: 46px; display: flex; align-items: center; justify-content: center;
+            padding: 9px 12px; border-radius: 12px; background: #fff3bf;
+            color: #664d03; text-align: center; font-weight: bold;
+        }
+        .dobble-scoreboard { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; }
+        .dobble-player-chip { padding: 6px 9px; border-radius: 999px; background: #f1f3f5; color: #343a40; font-size: 0.8rem; }
+        .dobble-player-chip.me { background: #fff3bf; font-weight: bold; }
+        .dobble-help { color: #6c757d; text-align: center; font-size: 0.78rem; }
+        @media (min-width: 600px) {
+            .dobble-board { display: grid; grid-template-columns: 1fr 1fr; grid-template-areas: 'center own' 'status status'; align-items: center; gap: 10px; }
+            .dobble-board > .dobble-section:first-child { grid-area: center; }
+            .dobble-board > .dobble-section:last-child { grid-area: own; }
+            .dobble-board > .dobble-status { grid-area: status; }
+            .dobble-card-host { width: min(35vw, 230px); }
+        }
+
         .hidden { display: none !important; }
     </style>
 </head>
@@ -191,8 +246,13 @@
         <h1>🐾 냥이 눈치게임</h1>
         <p style="text-align:center; color:#666; font-size:0.9rem;">이름을 적고 새 방을 만들거나 친구 방에 들어가자!</p>
         <input type="text" id="username" placeholder="내 이름 입력 (예: 아린이)" maxlength="10">
+        <label class="mode-label" for="game-mode-select">이번 방에서 할 게임</label>
+        <select id="game-mode-select" class="mode-select">
+            <option value="EYE">😼 냥이 눈치게임</option>
+            <option value="DOBBLE">🐱 냥이 도블</option>
+        </select>
         
-        <button onclick="createRoom()" style="margin-top: 12px; background: #ff7f50;">🏠 새 방 만들기 (방장)</button>
+        <button onclick="createRoom()" style="margin-top: 12px; background: #ff7f50;">🏠 선택한 게임 방 만들기</button>
         
         <div class="divider">─── 또는 친구 방 코드로 입장 ───</div>
         
@@ -208,19 +268,26 @@
             <div>
                 <div style="font-size: 0.75rem; color: #495057;">친구에게 알려줄 방 번호</div>
                 <div class="room-code-num" id="display-room-code">0000</div>
+                <div class="room-game-name" id="display-game-mode">😼 냥이 눈치게임</div>
             </div>
             <button class="copy-btn" onclick="copyRoomCode()">번호 복사</button>
         </div>
         
-        <div class="rule-guide-box">
-            <b>📜 한눈에 보는 게임 규칙</b><br>
+        <div class="rule-guide-box" id="eye-rule-guide">
+            <b>📜 냥이 눈치게임</b><br>
             • 각자 <b>1~15 숫자 카드</b>를 한 장씩 동시에 내요.<br>
             • 낸 숫자 카드는 사라져서 다시 못 써요.<br>
-            • 🐱 <b>고양이(+점수)</b>: 가장 <b>높은 숫자</b>를 낸 사람이 가져가요!<br>
-            • 🐭 <b>생쥐(-점수)</b>: 가장 <b>낮은 숫자</b>를 낸 사람이 떠안아요!<br>
-            • 같은 숫자를 내면 <b>다음번 </b>해당하는 사람이 가져가요.<br>
-            • 모두 같은 숫자를 내면 <b>무효! </b>다음 판으로 점수가 쌓여요.<br>
+            • 🐱 고양이는 가장 높은 숫자, 🐭 생쥐는 가장 낮은 숫자를 낸 사람이 가져가요.<br>
+            • 같은 숫자를 낸 친구들은 이번 판에 못 가져가요.<br>
+            • 가져갈 친구가 없으면 점수 카드는 다음 판으로 가요!<br>
             • 15라운드 후 점수가 가장 높은 사람이 <b>최종 우승!</b>
+        </div>
+        <div class="rule-guide-box hidden" id="dobble-rule-guide">
+            <b>📜 냥이 도블</b><br>
+            • 내 카드와 가운데 카드에서 똑같은 고양이를 찾아요.<br>
+            • 가운데 카드의 고양이를 누르면 그 카드를 가져와요.<br>
+            • 틀리면 3초 쉬어요. 가운데 카드가 바뀌면 바로 다시 할 수 있어요.<br>
+            • 가운데 덱이 비면 카드를 가장 많이 모은 사람이 이겨요!
         </div>
 
         <div id="unseated-list" class="lobby-waiting-box">접속 중: 없음</div>
@@ -262,9 +329,32 @@
         </div>
     </div>
 
+    <!-- 냥이 도블 화면 -->
+    <div id="dobble-screen">
+        <div class="dobble-topbar">
+            <span>🐱 냥이 도블</span>
+            <span class="dobble-progress" id="dobble-progress">가운데 덱 0장</span>
+        </div>
+        <div id="dobble-scoreboard" class="dobble-scoreboard"></div>
+        <div class="dobble-board">
+            <section class="dobble-section">
+                <div class="dobble-section-title">가운데 카드 덱</div>
+                <div class="dobble-deck-count" id="dobble-center-count">0장 남음</div>
+                <div id="dobble-center-card" class="dobble-card-host"></div>
+            </section>
+            <div id="dobble-status" class="dobble-status" role="status" aria-live="polite">공통 고양이를 찾아봐!</div>
+            <section class="dobble-section">
+                <div class="dobble-section-title">내 카드</div>
+                <div class="dobble-own-count" id="dobble-own-count">모은 카드 1장</div>
+                <div id="dobble-own-card" class="dobble-card-host"></div>
+            </section>
+        </div>
+        <div class="dobble-help">가운데 카드에 있는 공통 고양이를 눌러 카드를 가져와요.</div>
+    </div>
+
     <!-- 4. 최종 결과 화면 -->
     <div id="gameover-screen" class="hidden">
-        <h1>🎉 게임 종료! 최종 순위</h1>
+        <h1 id="final-title">🎉 게임 종료! 최종 순위</h1>
         <div id="final-rank-list"></div>
         <button id="reset-btn" onclick="resetGame()" class="hidden" style="background: #20c997; margin-top: 15px;">🔄 대기실로 돌아가기 (새로하기)</button>
         <p id="wait-host-msg" style="text-align: center; color: #666; font-size: 0.9rem;">방장이 새로하기 버튼을 누르면 대기실로 이동해!</p>
@@ -310,7 +400,8 @@
     function createRoom() {
         const name = document.getElementById('username').value.trim();
         if (!name) { alert('이름을 먼저 입력해줘!'); return; }
-        socket.emit('create-room', name);
+        const gameMode = document.getElementById('game-mode-select').value;
+        socket.emit('create-room', { name, gameMode });
     }
 
     function joinRoom() {
@@ -405,6 +496,121 @@
         chatToggle.setAttribute('aria-expanded', 'false');
     });
 
+    const DOBBLE_LAYOUT = [
+        { left: 50, top: 18, size: 22, rotate: -8 },
+        { left: 77, top: 34, size: 21, rotate: 9 },
+        { left: 76, top: 67, size: 22, rotate: -7 },
+        { left: 50, top: 82, size: 21, rotate: 8 },
+        { left: 23, top: 66, size: 22, rotate: -10 },
+        { left: 23, top: 35, size: 21, rotate: 8 },
+        { left: 40, top: 51, size: 24, rotate: -5 },
+        { left: 63, top: 53, size: 20, rotate: 11 }
+    ];
+    let lastDobbleCardVersion = null;
+    let lastDobbleLockUntil = 0;
+    let lastDobbleLockVersion = null;
+    let dobbleLockTimer = null;
+    let dobbleFlashTimer = null;
+
+    function renderDobbleCard(targetId, card, clickable, cardVersion, disabled = false) {
+        const host = document.getElementById(targetId);
+        host.replaceChildren();
+        if (!card || !Array.isArray(card.symbols)) return;
+
+        const circle = document.createElement('div');
+        circle.className = 'dobble-card';
+        card.symbols.forEach((symbolId, index) => {
+            const layout = DOBBLE_LAYOUT[(index + (card.id || 0)) % DOBBLE_LAYOUT.length];
+            const item = clickable ? document.createElement('button') : document.createElement('div');
+            if (clickable) {
+                item.type = 'button';
+                item.className = 'dobble-symbol';
+                item.disabled = disabled;
+                item.setAttribute('aria-label', '공통 고양이인지 선택');
+                item.addEventListener('click', () => socket.emit('dobble-answer', { symbolId, cardVersion }));
+            } else {
+                item.className = 'dobble-symbol';
+            }
+            item.style.left = layout.left + '%';
+            item.style.top = layout.top + '%';
+            item.style.width = layout.size + '%';
+            item.style.height = layout.size + '%';
+            item.style.transform = `translate(-50%, -50%) rotate(${layout.rotate}deg)`;
+
+            const img = document.createElement('img');
+            img.src = `./images/dobble/cat_${String(symbolId + 1).padStart(2, '0')}.png`;
+            img.alt = `고양이 ${symbolId + 1}`;
+            img.draggable = false;
+            item.appendChild(img);
+            circle.appendChild(item);
+        });
+        host.appendChild(circle);
+    }
+
+    function renderDobble(state, me) {
+        const version = Number(state.dobbleCardVersion || 0);
+        const previousVersion = lastDobbleCardVersion;
+        const wasLockedOnPreviousCard = lastDobbleLockUntil > Date.now() && lastDobbleLockVersion === previousVersion;
+        if (previousVersion !== null && version !== previousVersion && wasLockedOnPreviousCard) {
+            const status = document.getElementById('dobble-status');
+            status.textContent = '✨ 새 카드야! 다시 찾아봐!';
+            if (dobbleFlashTimer) clearTimeout(dobbleFlashTimer);
+            dobbleFlashTimer = setTimeout(() => {
+                status.textContent = '가운데 카드에 있는 공통 고양이를 눌러 카드를 가져와요!';
+            }, 1300);
+        }
+        lastDobbleCardVersion = version;
+
+        const centerCard = state.dobbleCenterCard;
+        const ownCard = me && me.dobbleActiveCard;
+        const centerCount = Number(state.dobbleDeckCount || 0);
+        const lockMs = Math.max(0, Number(me?.dobbleLockMs || 0));
+        const lockUntil = Date.now() + lockMs;
+        const lockVersion = me?.dobbleLockVersion ?? null;
+        const isLocked = lockMs > 0 && lockVersion === version;
+
+        lastDobbleLockUntil = isLocked ? lockUntil : 0;
+        lastDobbleLockVersion = isLocked ? lockVersion : null;
+
+        document.getElementById('dobble-progress').textContent = `가운데 덱 ${centerCount}장`;
+        document.getElementById('dobble-center-count').textContent = `${centerCount}장 남음`;
+        document.getElementById('dobble-own-count').textContent = `모은 카드 ${me?.dobbleCardCount || 0}장`;
+        renderDobbleCard('dobble-center-card', centerCard, true, version, isLocked);
+        renderDobbleCard('dobble-own-card', ownCard, false, version, true);
+
+        const scoreBoard = document.getElementById('dobble-scoreboard');
+        scoreBoard.replaceChildren();
+        Object.values(state.players).forEach((player) => {
+            const chip = document.createElement('div');
+            chip.className = 'dobble-player-chip' + (player.id === socket.id ? ' me' : '');
+            chip.textContent = `${player.name}: ${player.dobbleCardCount || 0}장`;
+            scoreBoard.appendChild(chip);
+        });
+
+        if (dobbleLockTimer) clearInterval(dobbleLockTimer);
+        const status = document.getElementById('dobble-status');
+        if (isLocked) {
+            if (dobbleFlashTimer) clearTimeout(dobbleFlashTimer);
+            const updateCountdown = () => {
+                const seconds = Math.max(0, Math.ceil((lockUntil - Date.now()) / 1000));
+                if (seconds > 0) {
+                    status.textContent = `🐾 앗, 다른 고양이야! ${seconds}초만 쉬었다 다시 찾아봐!`;
+                } else {
+                    if (dobbleLockTimer) clearInterval(dobbleLockTimer);
+                    dobbleLockTimer = null;
+                    document.querySelectorAll('#dobble-center-card .dobble-symbol').forEach((button) => {
+                        button.disabled = false;
+                    });
+                    status.textContent = '✨ 다시 찾아봐!';
+                }
+            };
+            updateCountdown();
+            dobbleLockTimer = setInterval(updateCountdown, 150);
+        } else if (!wasLockedOnPreviousCard || version === previousVersion) {
+            status.textContent = '가운데 카드에 있는 공통 고양이를 눌러 카드를 가져와요!';
+        }
+    }
+
     socket.on('update-room', (state) => {
         const myId = socket.id;
         const me = state.players[myId];
@@ -422,6 +628,11 @@
             document.getElementById('gameover-screen').classList.add('hidden');
 
             document.getElementById('display-room-code').innerText = state.roomCode;
+            const isDobbleRoom = state.gameMode === 'DOBBLE';
+            document.getElementById('display-game-mode').innerText = isDobbleRoom ? '🐱 냥이 도블' : '😼 냥이 눈치게임';
+            document.getElementById('eye-rule-guide').classList.toggle('hidden', isDobbleRoom);
+            document.getElementById('dobble-rule-guide').classList.toggle('hidden', !isDobbleRoom);
+            document.getElementById('dobble-screen').style.display = 'none';
 
             const allPlayers = Object.values(state.players);
             const unseated = allPlayers.filter(p => p.color === null).map(p => p.name);
@@ -483,11 +694,20 @@
                 document.getElementById('start-btn').classList.add('hidden');
             }
         } 
+        else if (state.gameState === 'DOBBLE_PLAYING') {
+            document.getElementById('login-screen').classList.add('hidden');
+            document.getElementById('room-screen').classList.add('hidden');
+            document.getElementById('gameover-screen').classList.add('hidden');
+            document.getElementById('game-screen').style.display = 'none';
+            document.getElementById('dobble-screen').style.display = 'flex';
+            renderDobble(state, me);
+        }
         else if (state.gameState === 'PLAYING' || state.gameState === 'ROUND_RESULT') {
             document.getElementById('login-screen').classList.add('hidden');
             document.getElementById('room-screen').classList.add('hidden');
             document.getElementById('gameover-screen').classList.add('hidden');
             document.getElementById('game-screen').style.display = 'flex';
+            document.getElementById('dobble-screen').style.display = 'none';
 
             document.getElementById('round-info').innerText = `[방 ${state.roomCode}] 라운드 ${state.currentRound} / 15`;
 
@@ -611,7 +831,11 @@
             document.getElementById('login-screen').classList.add('hidden');
             document.getElementById('room-screen').classList.add('hidden');
             document.getElementById('game-screen').style.display = 'none';
+            document.getElementById('dobble-screen').style.display = 'none';
             document.getElementById('gameover-screen').classList.remove('hidden');
+            document.getElementById('final-title').innerText = state.gameMode === 'DOBBLE'
+                ? '🎉 냥이 도블 종료! 모은 카드 순위'
+                : '🎉 게임 종료! 최종 순위';
 
             let sortedPlayers = Object.values(state.players).filter(p => p.color !== null).sort((a,b) => b.score - a.score);
             let rankHtml = '';

@@ -16,6 +16,8 @@ const MIN_PLAYERS = 2;
 const CHAT_MAX_LENGTH = 200;
 const CHAT_HISTORY_LIMIT = 50;
 const CHAT_COOLDOWN_MS = 600;
+const DOBBLE_SYMBOL_COUNT = 57;
+const DOBBLE_SYMBOLS_PER_CARD = 8;
 const SEAT_COLORS = new Set(['red', 'blue', 'green', 'orange', 'purple']);
 const INITIAL_SCORE_DECK = [
     { type: 'cat', value: 1, file: 'card_+1' }, { type: 'cat', value: 2, file: 'card_+2' },
@@ -50,6 +52,34 @@ function shuffle(array) {
     return shuffled;
 }
 
+function generateDobbleDeck() {
+    // Projective plane of order 7: 57 cards, 8 symbols per card,
+    // and exactly one shared symbol between every pair of cards.
+    const cards = [];
+    const point = (x, y) => (y * 7) + x;
+
+    for (let slope = 0; slope < 7; slope++) {
+        for (let intercept = 0; intercept < 7; intercept++) {
+            const symbols = [];
+            for (let x = 0; x < 7; x++) {
+                symbols.push(point(x, (slope * x + intercept) % 7));
+            }
+            symbols.push(49 + slope);
+            cards.push({ id: cards.length, symbols });
+        }
+    }
+
+    for (let x = 0; x < 7; x++) {
+        const symbols = [];
+        for (let y = 0; y < 7; y++) symbols.push(point(x, y));
+        symbols.push(56);
+        cards.push({ id: cards.length, symbols });
+    }
+
+    cards.push({ id: cards.length, symbols: Array.from({ length: 8 }, (_, i) => 49 + i) });
+    return cards;
+}
+
 function generateRoomCode() {
     if (rooms.size >= 9000) {
         throw new Error('생성 가능한 방 번호가 모두 사용 중입니다.');
@@ -78,20 +108,32 @@ function snapshotFor(room, viewerId) {
             playedCard: isViewer || revealCards
                 ? player.playedCard
                 : (player.playedCard === null ? null : 'HIDDEN'),
-            wonCards: player.wonCards.map((card) => ({ ...card }))
+            wonCards: player.wonCards.map((card) => ({ ...card })),
+            dobbleActiveCard: isViewer && player.dobbleStack?.length
+                ? { ...player.dobbleStack[player.dobbleStack.length - 1], symbols: [...player.dobbleStack[player.dobbleStack.length - 1].symbols] }
+                : null,
+            dobbleCardCount: player.dobbleStack?.length || 0,
+            dobbleLockMs: isViewer ? Math.max(0, (player.dobbleLockedUntil || 0) - Date.now()) : 0,
+            dobbleLockVersion: isViewer ? (player.dobbleLockVersion ?? null) : null
         };
     }
 
     return {
         roomCode: room.roomCode,
         hostId: room.hostId,
+        gameMode: room.gameMode || 'EYE',
         players,
         gameState: room.gameState,
         currentRound: room.currentRound,
         scoreDeck: [],
         tableScoreCards: room.tableScoreCards.map((card) => ({ ...card })),
         lastWinnerId: room.lastWinnerId,
-        roundResults: room.roundResults.map((result) => ({ ...result }))
+        roundResults: room.roundResults.map((result) => ({ ...result })),
+        dobbleCenterCard: room.dobbleCenterCard
+            ? { ...room.dobbleCenterCard, symbols: [...room.dobbleCenterCard.symbols] }
+            : null,
+        dobbleDeckCount: (room.dobbleDeck?.length || 0) + (room.dobbleCenterCard ? 1 : 0),
+        dobbleCardVersion: room.dobbleCardVersion || 0
     };
 }
 
@@ -134,7 +176,10 @@ io.on('connection', (socket) => {
             score: 0,
             hand: [],
             playedCard: null,
-            wonCards: []
+            wonCards: [],
+            dobbleStack: [],
+            dobbleLockedUntil: 0,
+            dobbleLockVersion: 0
         };
         broadcastRoom(room);
         socket.emit('chat-history', room.chatMessages || []);
@@ -148,9 +193,11 @@ io.on('connection', (socket) => {
         return true;
     }
 
-    socket.on('create-room', (name) => {
+    socket.on('create-room', (payload) => {
         if (rejectIfAlreadyInRoom()) return;
 
+        const createData = typeof payload === 'string' ? { name: payload, gameMode: 'EYE' } : (payload || {});
+        const gameMode = createData.gameMode === 'DOBBLE' ? 'DOBBLE' : 'EYE';
         let roomCode;
         try {
             roomCode = generateRoomCode();
@@ -162,6 +209,7 @@ io.on('connection', (socket) => {
         const room = {
             roomCode,
             hostId: socket.id,
+            gameMode,
             players: {},
             gameState: 'LOBBY',
             currentRound: 0,
@@ -170,10 +218,13 @@ io.on('connection', (socket) => {
             lastWinnerId: null,
             roundResults: [],
             roundToken: 0,
-            chatMessages: []
+            chatMessages: [],
+            dobbleDeck: [],
+            dobbleCenterCard: null,
+            dobbleCardVersion: 0
         };
         rooms.set(roomCode, room);
-        joinRoomLogic(room, name);
+        joinRoomLogic(room, createData.name);
     });
 
     socket.on('join-room', (payload = {}) => {
@@ -278,19 +329,44 @@ io.on('connection', (socket) => {
         }
 
         room.roundToken += 1;
-        room.gameState = 'PLAYING';
-        room.currentRound = 1;
-        room.scoreDeck = shuffle(INITIAL_SCORE_DECK);
-        room.tableScoreCards = [room.scoreDeck.pop()];
         room.lastWinnerId = null;
         room.roundResults = [];
+        room.scoreDeck = [];
+        room.tableScoreCards = [];
+        room.dobbleDeck = [];
+        room.dobbleCenterCard = null;
+        room.dobbleCardVersion = 0;
 
         seatedPlayers.forEach((player) => {
             player.score = 0;
-            player.hand = newHand();
+            player.hand = [];
             player.playedCard = null;
             player.wonCards = [];
+            player.dobbleStack = [];
+            player.dobbleLockedUntil = 0;
+            player.dobbleLockVersion = 0;
         });
+
+        if (room.gameMode === 'DOBBLE') {
+            const deck = shuffle(generateDobbleDeck());
+            seatedPlayers.forEach((player) => {
+                player.dobbleStack = [deck.pop()];
+                player.score = 1;
+            });
+            room.dobbleDeck = deck;
+            room.dobbleCenterCard = room.dobbleDeck.pop();
+            room.dobbleCardVersion = 1;
+            room.currentRound = 0;
+            room.gameState = 'DOBBLE_PLAYING';
+        } else {
+            room.gameState = 'PLAYING';
+            room.currentRound = 1;
+            room.scoreDeck = shuffle(INITIAL_SCORE_DECK);
+            room.tableScoreCards = [room.scoreDeck.pop()];
+            seatedPlayers.forEach((player) => {
+                player.hand = newHand();
+            });
+        }
 
         broadcastRoom(room);
     });
@@ -306,6 +382,9 @@ io.on('connection', (socket) => {
         room.tableScoreCards = [];
         room.lastWinnerId = null;
         room.roundResults = [];
+        room.dobbleDeck = [];
+        room.dobbleCenterCard = null;
+        room.dobbleCardVersion = 0;
 
         Object.values(room.players).forEach((player) => {
             player.ready = false;
@@ -313,8 +392,54 @@ io.on('connection', (socket) => {
             player.hand = [];
             player.playedCard = null;
             player.wonCards = [];
+            player.dobbleStack = [];
+            player.dobbleLockedUntil = 0;
+            player.dobbleLockVersion = 0;
         });
 
+        broadcastRoom(room);
+    });
+
+    socket.on('dobble-answer', (payload = {}) => {
+        const room = getCurrentRoom();
+        if (!room || room.gameMode !== 'DOBBLE' || room.gameState !== 'DOBBLE_PLAYING') return;
+
+        const player = room.players[socket.id];
+        if (!player || player.color === null || !player.dobbleStack?.length) return;
+
+        const version = Number(payload?.cardVersion);
+        if (!Number.isInteger(version) || version !== room.dobbleCardVersion) return;
+
+        const now = Date.now();
+        if (player.dobbleLockedUntil > now && player.dobbleLockVersion === room.dobbleCardVersion) return;
+
+        const symbolId = Number(payload?.symbolId);
+        const ownCard = player.dobbleStack[player.dobbleStack.length - 1];
+        const isCorrect = Number.isInteger(symbolId) &&
+            symbolId >= 0 && symbolId < DOBBLE_SYMBOL_COUNT &&
+            ownCard.symbols.includes(symbolId) &&
+            room.dobbleCenterCard.symbols.includes(symbolId);
+
+        if (!isCorrect) {
+            player.dobbleLockedUntil = now + 3000;
+            player.dobbleLockVersion = room.dobbleCardVersion;
+            broadcastRoom(room);
+            return;
+        }
+
+        player.dobbleStack.push(room.dobbleCenterCard);
+        player.score = player.dobbleStack.length;
+        room.dobbleCenterCard = room.dobbleDeck.pop() || null;
+        room.dobbleCardVersion += 1;
+
+        for (const other of Object.values(room.players)) {
+            other.dobbleLockedUntil = 0;
+            other.dobbleLockVersion = room.dobbleCardVersion;
+        }
+
+        if (!room.dobbleCenterCard) {
+            room.gameState = 'GAME_OVER';
+        }
         broadcastRoom(room);
     });
 
@@ -454,7 +579,7 @@ io.on('connection', (socket) => {
         const activePlayers = Object.values(room.players)
             .filter((player) => player.color !== null);
 
-        if ((room.gameState === 'PLAYING' || room.gameState === 'ROUND_RESULT') &&
+        if ((room.gameState === 'PLAYING' || room.gameState === 'ROUND_RESULT' || room.gameState === 'DOBBLE_PLAYING') &&
             activePlayers.length < MIN_PLAYERS) {
             room.roundToken += 1;
             room.gameState = 'GAME_OVER';
