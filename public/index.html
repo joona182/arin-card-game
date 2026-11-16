@@ -149,6 +149,38 @@
 
         .rank-item { padding: 12px; border-radius: 10px; background: #f8f9fa; margin: 8px 0; display: flex; justify-content: space-between; font-size: 1.1rem; }
         .rank-1 { background: #fff3bf; border: 2px solid #fcc419; font-weight: bold; }
+        .chat-toggle {
+            position: fixed; right: 16px; bottom: 16px; z-index: 1000;
+            width: auto; margin: 0; padding: 12px 16px; border-radius: 999px;
+            box-shadow: 0 4px 14px rgba(0,0,0,0.25);
+        }
+        .chat-panel {
+            position: fixed; right: 16px; bottom: 76px; z-index: 1000;
+            width: min(350px, calc(100vw - 24px)); height: min(430px, 65vh);
+            display: flex; flex-direction: column; gap: 8px;
+            padding: 12px; background: #fff; border: 1px solid #dee2e6;
+            border-radius: 14px; box-shadow: 0 8px 28px rgba(0,0,0,0.25);
+        }
+        .chat-header { display: flex; justify-content: space-between; align-items: center; color: #343a40; }
+        .chat-close {
+            width: auto; margin: 0; padding: 5px 10px;
+            background: #f1f3f5; color: #495057; font-size: 0.85rem;
+        }
+        .chat-messages {
+            flex: 1; min-height: 0; overflow-y: auto; display: flex;
+            flex-direction: column; gap: 7px; padding: 4px 2px;
+        }
+        .chat-message { padding: 7px 9px; border-radius: 10px; background: #f1f3f5; }
+        .chat-message-meta { margin-bottom: 2px; color: #6c757d; font-size: 0.72rem; font-weight: bold; }
+        .chat-message-text { color: #212529; font-size: 0.9rem; white-space: pre-wrap; overflow-wrap: anywhere; }
+        .chat-form { display: flex; align-items: center; gap: 6px; }
+        .chat-form input { flex: 1; min-width: 0; width: auto; margin: 0; font-size: 0.9rem; }
+        .chat-form button { flex: none; width: auto; margin: 0; padding: 11px 13px; }
+        @media (max-width: 480px) {
+            .chat-toggle { right: 12px; bottom: 12px; }
+            .chat-panel { right: 12px; bottom: 70px; width: calc(100vw - 24px); height: min(420px, 60vh); }
+        }
+
         .hidden { display: none !important; }
     </style>
 </head>
@@ -186,8 +218,8 @@
             • 낸 숫자 카드는 사라져서 다시 못 써요.<br>
             • 🐱 <b>고양이(+점수)</b>: 가장 <b>높은 숫자</b>를 낸 사람이 가져가요!<br>
             • 🐭 <b>생쥐(-점수)</b>: 가장 <b>낮은 숫자</b>를 낸 사람이 떠안아요!<br>
-            • 같은 숫자를 내면 <b>다음번</b> 해당하는 사람이 가져가요.<br>
-            • 모두 같은 숫자를 내면 <b>무효!</b> 다음 판으로 점수가 쌓여요.<br>
+            • 같은 숫자를 내면 <b>다음번 </b>해당하는 사람이 가져가요.<br>
+            • 모두 같은 숫자를 내면 <b>무효! </b>다음 판으로 점수가 쌓여요.<br>
             • 15라운드 후 점수가 가장 높은 사람이 <b>최종 우승!</b>
         </div>
 
@@ -237,6 +269,19 @@
         <button id="reset-btn" onclick="resetGame()" class="hidden" style="background: #20c997; margin-top: 15px;">🔄 대기실로 돌아가기 (새로하기)</button>
         <p id="wait-host-msg" style="text-align: center; color: #666; font-size: 0.9rem;">방장이 새로하기 버튼을 누르면 대기실로 이동해!</p>
     </div>
+
+    <button id="chat-toggle" class="chat-toggle hidden" type="button" aria-controls="chat-panel" aria-expanded="false">💬 채팅</button>
+    <section id="chat-panel" class="chat-panel hidden" aria-label="방 채팅">
+        <div class="chat-header">
+            <strong>💬 방 채팅</strong>
+            <button id="chat-close" class="chat-close" type="button">닫기</button>
+        </div>
+        <div id="chat-messages" class="chat-messages" role="log" aria-live="polite" aria-relevant="additions"></div>
+        <form id="chat-form" class="chat-form">
+            <input id="chat-input" type="text" maxlength="200" placeholder="메시지를 입력해줘" autocomplete="off" aria-label="채팅 메시지">
+            <button type="submit">전송</button>
+        </form>
+    </section>
 
 <script>
     const socket = io();
@@ -303,9 +348,67 @@
         }[character]));
     }
 
+    function chatTimeLabel(value) {
+        const date = new Date(value);
+        if (Number.isNaN(date.getTime())) return '';
+        return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    }
+
+    function appendChatMessage(message) {
+        if (!message || typeof message !== 'object') return;
+        const container = document.getElementById('chat-messages');
+        const item = document.createElement('div');
+        item.className = 'chat-message';
+
+        const meta = document.createElement('div');
+        meta.className = 'chat-message-meta';
+        meta.textContent = `${String(message.name || '플레이어')} · ${chatTimeLabel(message.createdAt)}`;
+
+        const body = document.createElement('div');
+        body.className = 'chat-message-text';
+        body.textContent = String(message.text || '');
+
+        item.append(meta, body);
+        container.appendChild(item);
+        while (container.children.length > 50) container.removeChild(container.firstElementChild);
+        container.scrollTop = container.scrollHeight;
+    }
+
+    socket.on('chat-history', (messages) => {
+        const container = document.getElementById('chat-messages');
+        container.replaceChildren();
+        if (Array.isArray(messages)) messages.forEach(appendChatMessage);
+    });
+
+    socket.on('chat-message', appendChatMessage);
+
+    document.getElementById('chat-form').addEventListener('submit', (event) => {
+        event.preventDefault();
+        const input = document.getElementById('chat-input');
+        const text = input.value.trim();
+        if (!text) return;
+        socket.emit('chat-message', { text });
+        input.value = '';
+        input.focus();
+    });
+
+    const chatToggle = document.getElementById('chat-toggle');
+    const chatPanel = document.getElementById('chat-panel');
+    chatToggle.addEventListener('click', () => {
+        const isOpening = chatPanel.classList.contains('hidden');
+        chatPanel.classList.toggle('hidden', !isOpening);
+        chatToggle.setAttribute('aria-expanded', String(isOpening));
+        if (isOpening) document.getElementById('chat-input').focus();
+    });
+    document.getElementById('chat-close').addEventListener('click', () => {
+        chatPanel.classList.add('hidden');
+        chatToggle.setAttribute('aria-expanded', 'false');
+    });
+
     socket.on('update-room', (state) => {
         const myId = socket.id;
         const me = state.players[myId];
+        if (me) document.getElementById('chat-toggle').classList.remove('hidden');
         const firstId = Object.keys(state.players)[0];
         const isHost = (state.hostId || firstId) === myId;
         activeRoomCode = state.roomCode;

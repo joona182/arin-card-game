@@ -13,6 +13,9 @@ app.use(express.static(path.join(__dirname, 'public')));
 const rooms = new Map();
 const MAX_PLAYERS = 5;
 const MIN_PLAYERS = 2;
+const CHAT_MAX_LENGTH = 200;
+const CHAT_HISTORY_LIMIT = 50;
+const CHAT_COOLDOWN_MS = 600;
 const SEAT_COLORS = new Set(['red', 'blue', 'green', 'orange', 'purple']);
 const INITIAL_SCORE_DECK = [
     { type: 'cat', value: 1, file: 'card_+1' }, { type: 'cat', value: 2, file: 'card_+2' },
@@ -134,6 +137,7 @@ io.on('connection', (socket) => {
             wonCards: []
         };
         broadcastRoom(room);
+        socket.emit('chat-history', room.chatMessages || []);
     }
 
     function requireHost(room) {
@@ -165,7 +169,8 @@ io.on('connection', (socket) => {
             tableScoreCards: [],
             lastWinnerId: null,
             roundResults: [],
-            roundToken: 0
+            roundToken: 0,
+            chatMessages: []
         };
         rooms.set(roomCode, room);
         joinRoomLogic(room, name);
@@ -225,6 +230,35 @@ io.on('connection', (socket) => {
             player.ready = !player.ready;
             broadcastRoom(room);
         }
+    });
+
+    socket.on('chat-message', (payload = {}) => {
+        const room = getCurrentRoom();
+        const player = room && room.players[socket.id];
+        if (!room || !player) return;
+
+        const rawText = typeof payload?.text === 'string' ? payload.text : '';
+        const text = Array.from(rawText.replace(/[\u0000-\u001f\u007f]/g, ''))
+            .slice(0, CHAT_MAX_LENGTH)
+            .join('')
+            .trim();
+        if (!text) return;
+
+        const now = Date.now();
+        if (now - (socket.data.lastChatAt || 0) < CHAT_COOLDOWN_MS) return;
+        socket.data.lastChatAt = now;
+
+        const message = {
+            name: player.name,
+            text,
+            createdAt: new Date(now).toISOString()
+        };
+        room.chatMessages.push(message);
+        if (room.chatMessages.length > CHAT_HISTORY_LIMIT) {
+            room.chatMessages.shift();
+        }
+
+        io.to(room.roomCode).emit('chat-message', message);
     });
 
     socket.on('start-game', () => {
