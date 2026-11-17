@@ -269,6 +269,19 @@
             flex: 1; min-height: 0; overflow-y: auto; display: flex;
             flex-direction: column; gap: 7px; padding: 4px 2px;
         }
+        .chat-toast {
+            position: fixed; right: 16px; bottom: 76px; z-index: 999;
+            width: min(340px, calc(100vw - 32px)); padding: 9px 12px;
+            display: flex; flex-direction: column; gap: 2px;
+            border: 1px solid #ffd6d6; border-left: 4px solid #f03e3e; border-radius: 12px;
+            background: rgba(255,255,255,.97); color: #343a40;
+            box-shadow: 0 4px 14px rgba(0,0,0,.2); pointer-events: none;
+            opacity: 0; visibility: hidden; transform: translateY(7px);
+            transition: opacity .18s ease, transform .18s ease, visibility .18s ease;
+        }
+        .chat-toast.show { opacity: 1; visibility: visible; transform: translateY(0); }
+        .chat-toast-name { color: #c92a2a; font-size: .75rem; font-weight: 800; }
+        .chat-toast-text { font-size: .88rem; line-height: 1.3; overflow-wrap: anywhere; }
         .chat-message { padding: 7px 9px; border-radius: 10px; background: #f1f3f5; }
         .chat-message-meta { margin-bottom: 2px; color: #6c757d; font-size: 0.72rem; font-weight: bold; }
         .chat-message-text { color: #212529; font-size: 0.9rem; white-space: pre-wrap; overflow-wrap: anywhere; }
@@ -278,6 +291,7 @@
         @media (max-width: 480px) {
             .chat-toggle { right: 12px; bottom: 12px; }
             .chat-panel { right: 12px; bottom: 70px; width: calc(100vw - 24px); height: min(420px, 60vh); }
+            .chat-toast { right: 12px; bottom: 68px; width: calc(100vw - 24px); }
         }
 
         #dobble-screen {
@@ -489,6 +503,10 @@
             <button type="submit">전송</button>
         </form>
     </section>
+    <div id="chat-toast" class="chat-toast" role="status" aria-live="polite">
+        <span id="chat-toast-name" class="chat-toast-name"></span>
+        <span id="chat-toast-text" class="chat-toast-text"></span>
+    </div>
 
 <script>
     const socket = io();
@@ -667,7 +685,7 @@
         return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     }
 
-    function appendChatMessage(message) {
+    function appendChatMessage(message, scrollToBottom = true) {
         if (!message || typeof message !== 'object') return;
         const container = document.getElementById('chat-messages');
         const item = document.createElement('div');
@@ -684,21 +702,42 @@
         item.append(meta, body);
         container.appendChild(item);
         while (container.children.length > 50) container.removeChild(container.firstElementChild);
-        container.scrollTop = container.scrollHeight;
+        if (scrollToBottom) container.scrollTop = container.scrollHeight;
+    }
+
+    function scrollChatToLatest() {
+        const container = document.getElementById('chat-messages');
+        requestAnimationFrame(() => { container.scrollTop = container.scrollHeight; });
+    }
+
+    let chatToastTimer = null;
+    function showChatToast(message) {
+        const toast = document.getElementById('chat-toast');
+        if (!message || !toast) return;
+        document.getElementById('chat-toast-name').textContent = `${String(message.name || '플레이어')}가 보냈어`;
+        document.getElementById('chat-toast-text').textContent = String(message.text || '');
+        toast.classList.add('show');
+        if (chatToastTimer) clearTimeout(chatToastTimer);
+        chatToastTimer = setTimeout(() => toast.classList.remove('show'), 2600);
     }
 
     socket.on('chat-history', (messages) => {
         const container = document.getElementById('chat-messages');
         container.replaceChildren();
-        if (Array.isArray(messages)) messages.forEach(appendChatMessage);
+        if (Array.isArray(messages)) messages.forEach((message) => appendChatMessage(message, false));
         document.getElementById('chat-unread-badge').classList.add('hidden');
+        if (!document.getElementById('chat-panel').classList.contains('hidden')) scrollChatToLatest();
     });
 
     socket.on('chat-message', (message) => {
-        appendChatMessage(message);
-        const panelIsClosed = document.getElementById('chat-panel').classList.contains('hidden');
+        const panel = document.getElementById('chat-panel');
+        const panelIsClosed = panel.classList.contains('hidden');
+        const container = document.getElementById('chat-messages');
+        const wasNearBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 48;
+        appendChatMessage(message, !panelIsClosed && wasNearBottom);
         if (panelIsClosed) {
             document.getElementById('chat-unread-badge').classList.remove('hidden');
+            showChatToast(message);
         }
     });
 
@@ -721,7 +760,9 @@
         chatToggle.setAttribute('aria-expanded', String(isOpening));
         if (isOpening) {
             chatUnreadBadge.classList.add('hidden');
+            document.getElementById('chat-toast').classList.remove('show');
             chatToggle.setAttribute('aria-label', '채팅 닫기');
+            scrollChatToLatest();
             document.getElementById('chat-input').focus();
         } else {
             chatToggle.setAttribute('aria-label', '채팅 열기');
