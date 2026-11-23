@@ -231,6 +231,7 @@ function snapshotFor(room, viewerId) {
     }
 
     return {
+        serverTime: Date.now(),
         roomCode: room.roomCode,
         hostId: room.hostId,
         gameMode: room.gameMode || 'EYE',

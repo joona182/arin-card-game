@@ -365,7 +365,9 @@
         .uno-headline { display: flex; flex-direction: column; gap: 1px; }
         .uno-room-label { color: #68757d; font-size: .72rem; }
         .uno-reset { width: auto; margin: 0; padding: 6px 10px; font-size: .78rem; background: #fa5252; }
-        .uno-message { min-height: 42px; padding: 8px 11px; display: flex; align-items: center; justify-content: space-between; gap: 8px; border-radius: 12px; background: #fff; color: #176e61; font-size: .86rem; font-weight: 900; box-shadow: 0 2px 6px rgba(0,0,0,.07); }
+        .uno-message { min-height: 42px; padding: 8px 11px; display: flex; align-items: center; justify-content: space-between; gap: 8px; border-radius: 12px; background: #fff; color: #176e61; font-size: .86rem; font-weight: 900; box-shadow: 0 2px 6px rgba(0,0,0,.07); transition: background .15s ease, color .15s ease; }
+        .uno-message > span:first-child { flex: 1; min-width: 0; line-height: 1.25; overflow-wrap: anywhere; }
+        .uno-message.effect { background: #fff0f0; color: #a61e4d; outline: 2px solid #fa5252; font-size: .92rem; }
         .uno-clock { flex: 0 0 auto; min-width: 43px; padding: 5px 7px; border-radius: 10px; background: #e6f6ef; color: #177452; text-align: center; font-variant-numeric: tabular-nums; }
         .uno-clock.warning { background: #fff0d6; color: #b65b00; }
         .uno-clock.urgent { background: #ffe3e3; color: #c92a2a; animation: unoPulse .65s ease-in-out infinite alternate; }
@@ -373,7 +375,7 @@
         .uno-arena { position: relative; height: min(58vh, 540px); min-height: 410px; overflow: hidden; border: 8px solid #8d5524; border-radius: 34px; background: radial-gradient(circle, #38b2ac 0%, #2c7a7b 100%); box-shadow: inset 0 0 25px rgba(0,0,0,.35), 0 6px 15px rgba(0,0,0,.15); }
         .uno-seats { position: absolute; top: 10px; left: 8px; right: 8px; z-index: 3; display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 6px; }
         .uno-seat { min-width: 102px; max-width: 135px; min-height: 40px; padding: 4px 7px 4px 4px; display: flex; align-items: center; gap: 5px; border: 2px solid #ddd; border-radius: 22px; background: #fffffff2; box-shadow: 0 2px 7px #073f3b55; transition: transform .18s ease, box-shadow .18s ease; }
-        .uno-seat.active { border-color: #ffe066 !important; box-shadow: 0 0 0 3px #ffe06677, 0 3px 12px #073f3b66; transform: scale(1.06); }
+        .uno-seat.active { border: 4px solid #fa3e4e !important; background: #fff4f4; box-shadow: 0 0 0 4px #fa3e4e55, 0 3px 15px #8a102a88; transform: scale(1.09); }
         .uno-seat-avatar { width: 27px; height: 27px; flex: 0 0 27px; display: grid; place-items: center; border-radius: 50%; background: #fff3d6; font-size: 16px; }
         .uno-seat-name { max-width: 64px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: .7rem; font-weight: 900; }
         .uno-seat-count { margin-left: auto; color: #54616a; font-size: .65rem; font-weight: 900; white-space: nowrap; }
@@ -402,8 +404,9 @@
         .uno-card-face.wild .uno-card-symbol { font-size: 1.16rem; }
         .uno-current-color { min-height: 28px; padding: 5px 11px; border: 1px solid #ffffff55; border-radius: 999px; background: #064f4b66; color: white; font-size: .75rem; font-weight: 900; text-shadow: 0 1px 2px #064f4b; }
         .uno-direction { color: #fff; font-size: .72rem; font-weight: 900; text-shadow: 0 1px 4px #164f4c; }
-        .uno-my-seat { position: absolute; bottom: 11px; left: 50%; transform: translateX(-50%); padding: 5px 11px 5px 5px; display: flex; align-items: center; gap: 7px; border: 2px solid #ffd166; border-radius: 24px; background: #fffdf5; box-shadow: 0 3px 9px #073f3b66; white-space: nowrap; }
-        .uno-my-seat.active { box-shadow: 0 0 0 4px #ffe06666, 0 3px 12px #073f3b77; }
+        .uno-my-seat { position: absolute; bottom: 11px; left: 50%; transform: translateX(-50%); padding: 5px 11px 5px 5px; display: flex; align-items: center; gap: 7px; border: 2px solid #adb5bd; border-radius: 24px; background: #fffdf5; box-shadow: 0 3px 9px #073f3b66; white-space: nowrap; transition: border .15s ease, box-shadow .15s ease, background .15s ease; }
+        .uno-my-seat.active { border: 4px solid #fa3e4e; background: #fff4f4; box-shadow: 0 0 0 5px #fa3e4e55, 0 3px 15px #8a102a88; }
+        .uno-my-seat.active .uno-seat-badge { color: #c92a2a; }
         .uno-my-seat .uno-seat-avatar { width: 29px; height: 29px; flex-basis: 29px; }
         .uno-my-seat-name { font-size: .78rem; font-weight: 900; }
         .uno-seat-badge { color: #16835e; font-size: .68rem; font-weight: 1000; }
@@ -604,7 +607,7 @@
             <div id="uno-my-seat" class="uno-my-seat">
                 <span class="uno-seat-avatar">🙋</span>
                 <span id="uno-my-name" class="uno-my-seat-name">나</span>
-                <span id="uno-my-seat-badge" class="uno-seat-badge">내 자리</span>
+                <span id="uno-my-seat-badge" class="uno-seat-badge"></span>
             </div>
         </section>
         <section class="uno-hand-panel" aria-label="내 UNO 손패">
@@ -676,6 +679,9 @@
     let lastUnoActionId = 0;
     let pendingUnoCardId = null;
     let lastUnoRoomCode = '';
+    let unoActionNoticeText = '';
+    let unoActionNoticeUntil = 0;
+    let unoActionNoticeTimer = null;
 
     const UNO_COLOR_LABELS = { red: '빨강', blue: '파랑', yellow: '노랑', green: '초록' };
     const UNO_COLOR_HEX = { red: '#ed3e4a', blue: '#3488e8', yellow: '#f5d040', green: '#26a96c' };
@@ -1259,6 +1265,44 @@
         setTimeout(() => flight.remove(), 480);
     }
 
+    function unoActionMessage(action, state) {
+        if (!action) return '';
+        const actor = state.players[action.playerId]?.name || '친구';
+        const target = action.effectTargetId ? state.players[action.effectTargetId]?.name || '다음 친구' : '다음 친구';
+        const card = action.card;
+        if (action.type === 'play' && card) {
+            if (card.kind === 'draw2') return `💥 ${actor}의 +2 공격! ${target}가 카드 ${action.effectDrawCount || 2}장을 받아요!`;
+            if (card.kind === 'wild4') return `💥 ${actor}의 +4 공격! ${target}가 카드 ${action.effectDrawCount || 4}장을 받고, 색은 ${UNO_COLOR_LABELS[card.chosenColor] || '새 색'}으로 바뀌어요!`;
+            if (card.kind === 'skip') return `⏭️ ${actor}가 건너뛰기 카드를 냈어! 다음 친구 차례는 쉬어요.`;
+            if (card.kind === 'reverse') return `🔄 ${actor}가 방향 바꾸기 카드를 냈어! 이제 반대 방향으로 돌아요.`;
+            if (card.kind === 'wild') return `🌈 ${actor}가 색을 ${UNO_COLOR_LABELS[card.chosenColor] || '새 색'}으로 바꿨어!`;
+            const color = UNO_COLOR_LABELS[card.color] || '';
+            return `🃏 ${actor}가 ${color} ${card.value} 카드를 냈어!`;
+        }
+        if (action.type === 'uno-missed') return `😮 ${actor}가 UNO를 놓쳐서 카드 ${action.drawCount || 2}장을 받아요!`;
+        if (action.type === 'timeout') return action.drawCount
+            ? `⌛ ${actor}의 시간이 끝났어! 카드 한 장을 받고 다음 차례로 넘어가요.`
+            : `⌛ ${actor}의 시간이 끝났어! 다음 차례로 넘어가요.`;
+        if (action.type === 'draw') return `🂠 ${actor}가 덱에서 카드 한 장을 뽑았어!`;
+        if (action.type === 'pass') return `➡️ ${actor}가 차례를 넘겼어!`;
+        if (action.type === 'uno-call') return `📣 ${actor}가 UNO를 외쳤어!`;
+        if (action.type === 'disconnect') return '👋 친구가 나가서 차례가 바뀌었어.';
+        return '';
+    }
+
+    function defaultUnoMessage(state) {
+        const uno = state?.uno;
+        if (!uno) return '';
+        const pending = uno.pendingUnoCall;
+        if (pending) {
+            const caller = state.players[pending.playerId];
+            return pending.playerId === socket.id ? '빨리 UNO를 눌러!' : `${caller?.name || '친구'}가 UNO를 외치는 중!`;
+        }
+        return uno.currentPlayerId === socket.id
+            ? (uno.drewCardId !== null && uno.drewCardId !== undefined ? '뽑은 카드를 낼 수 있어!' : '내 차례야! 카드를 내거나 덱을 눌러.')
+            : `${state.players[uno.currentPlayerId]?.name || '친구'} 차례야.`;
+    }
+
     function renderUno(state, me, isHost) {
         const uno = state.uno;
         if (!uno || !me) return;
@@ -1288,7 +1332,7 @@
         document.getElementById('uno-reset-btn').classList.toggle('hidden', !isHost);
         document.getElementById('uno-my-name').textContent = `${me.name} (나)`;
         document.getElementById('uno-my-seat').classList.toggle('active', myTurn);
-        document.getElementById('uno-my-seat-badge').textContent = myTurn ? '내 차례' : '내 자리';
+        document.getElementById('uno-my-seat-badge').textContent = myTurn ? '내 차례' : '';
         document.getElementById('uno-draw-count').textContent = `덱 ${uno.drawPileCount}장`;
         document.getElementById('uno-current-color').textContent = `현재 색 · ${UNO_COLOR_LABELS[uno.currentColor] || '무지개'}`;
         document.getElementById('uno-current-color').style.background = UNO_COLOR_HEX[uno.currentColor] || '#7048e8';
@@ -1317,16 +1361,19 @@
         }).join('');
 
         const message = document.getElementById('uno-message-text');
-        if (pending) {
-            const caller = state.players[pending.playerId];
-            message.textContent = pendingForMe ? '빨리 UNO를 눌러!' : `${caller?.name || '친구'}가 UNO를 외치는 중!`;
-        } else if (myTurn) {
-            message.textContent = uno.drewCardId !== null && uno.drewCardId !== undefined
-                ? '뽑은 카드를 낼 수 있어!'
-                : '내 차례야! 카드를 내거나 덱을 눌러.';
-        } else {
-            message.textContent = `${currentPlayer?.name || '친구'} 차례야.`;
+        if (action && action.id !== priorActionId) {
+            unoActionNoticeText = unoActionMessage(action, state);
+            unoActionNoticeUntil = performance.now() + 4500;
+            if (unoActionNoticeTimer) clearTimeout(unoActionNoticeTimer);
+            unoActionNoticeTimer = setTimeout(() => {
+                unoActionNoticeText = '';
+                document.getElementById('uno-message').classList.remove('effect');
+                if (window.lastUnoState) message.textContent = defaultUnoMessage(window.lastUnoState);
+            }, 4550);
         }
+        const showingActionNotice = !!unoActionNoticeText && performance.now() < unoActionNoticeUntil;
+        message.textContent = showingActionNotice ? unoActionNoticeText : defaultUnoMessage(state);
+        document.getElementById('uno-message').classList.toggle('effect', showingActionNotice);
 
         drawPile.disabled = !myTurn || !!pending || uno.drewCardId !== null && uno.drewCardId !== undefined;
         drawPile.classList.toggle('ready', !drawPile.disabled);
@@ -1336,9 +1383,11 @@
 
         if (unoClockTimer) clearInterval(unoClockTimer);
         const clock = document.getElementById('uno-clock');
+        const deadlineServerTime = pending?.deadline || uno.turnExpiresAt;
+        const serverTimeAtSnapshot = Number(state.serverTime) || Date.now();
+        const deadlineMonotonic = performance.now() + Math.max(0, deadlineServerTime - serverTimeAtSnapshot);
         const updateClock = () => {
-            const deadline = pending?.deadline || uno.turnExpiresAt;
-            const seconds = Math.max(0, Math.ceil((deadline - Date.now()) / 1000));
+            const seconds = Math.max(0, Math.ceil((deadlineMonotonic - performance.now()) / 1000));
             clock.textContent = `${seconds}초`;
             clock.classList.toggle('warning', seconds <= 10 && seconds > 5);
             clock.classList.toggle('urgent', seconds <= 5);
@@ -1392,6 +1441,11 @@
             lastDobbleCardVersion = null;
             lastUnoActionId = 0;
             lastUnoRoomCode = state.roomCode;
+            unoActionNoticeText = '';
+            unoActionNoticeUntil = 0;
+            if (unoActionNoticeTimer) clearTimeout(unoActionNoticeTimer);
+            unoActionNoticeTimer = null;
+            document.getElementById('uno-message').classList.remove('effect');
             document.getElementById('game-screen').classList.remove('dobble-mode');
             document.getElementById('table-arena').classList.remove('dobble-arena');
             document.getElementById('hand-box').style.display = '';
@@ -1626,6 +1680,8 @@
             }
         }
         else if (state.gameState === 'GAME_OVER') {
+            if (unoActionNoticeTimer) clearTimeout(unoActionNoticeTimer);
+            unoActionNoticeTimer = null;
             const finalUnoAction = state.gameMode === 'UNO' ? state.uno?.lastAction : null;
             if (finalUnoAction?.type === 'play' && finalUnoAction.id !== lastUnoActionId) {
                 const source = finalUnoAction.playerId === socket.id
