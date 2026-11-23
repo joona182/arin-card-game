@@ -12,6 +12,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 const rooms = new Map();
 const MAX_PLAYERS = 5;
+const UNO_MAX_PLAYERS = 4;
 const MIN_PLAYERS = 2;
 const CHAT_MAX_LENGTH = 200;
 const CHAT_HISTORY_LIMIT = 50;
@@ -381,8 +382,11 @@ io.on('connection', (socket) => {
             socket.emit('error-msg', '이미 게임이 시작된 방이라 들어갈 수 없어!');
             return;
         }
-        if (Object.keys(room.players).length >= MAX_PLAYERS) {
-            socket.emit('error-msg', '방 인원(최대 5명)이 꽉 찼어!');
+        const roomPlayerLimit = room.gameMode === 'UNO' ? UNO_MAX_PLAYERS : MAX_PLAYERS;
+        if (Object.keys(room.players).length >= roomPlayerLimit) {
+            socket.emit('error-msg', room.gameMode === 'UNO'
+                ? '냥이 UNO는 최대 4명까지 함께할 수 있어!'
+                : '방 인원(최대 5명)이 꽉 찼어!');
             return;
         }
 
@@ -461,6 +465,10 @@ io.on('connection', (socket) => {
 
         if (seatedPlayers.length < MIN_PLAYERS) {
             socket.emit('error-msg', '게임을 시작하려면 최소 2명이 자리에 앉아야 해!');
+            return;
+        }
+        if (room.gameMode === 'UNO' && seatedPlayers.length > UNO_MAX_PLAYERS) {
+            socket.emit('error-msg', '냥이 UNO는 최대 4명까지 할 수 있어!');
             return;
         }
         if (seatedPlayers.length !== allPlayers.length || seatedPlayers.some((player) => !player.ready)) {

@@ -373,12 +373,19 @@
         .uno-clock.urgent { background: #ffe3e3; color: #c92a2a; animation: unoPulse .65s ease-in-out infinite alternate; }
         @keyframes unoPulse { to { transform: scale(1.06); } }
         .uno-arena { position: relative; height: min(58vh, 540px); min-height: 410px; overflow: hidden; border: 8px solid #8d5524; border-radius: 34px; background: radial-gradient(circle, #38b2ac 0%, #2c7a7b 100%); box-shadow: inset 0 0 25px rgba(0,0,0,.35), 0 6px 15px rgba(0,0,0,.15); }
-        .uno-seats { position: absolute; top: 10px; left: 8px; right: 8px; z-index: 3; display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 6px; }
-        .uno-seat { min-width: 102px; max-width: 135px; min-height: 40px; padding: 4px 7px 4px 4px; display: flex; align-items: center; gap: 5px; border: 2px solid #ddd; border-radius: 22px; background: #fffffff2; box-shadow: 0 2px 7px #073f3b55; transition: transform .18s ease, box-shadow .18s ease; }
-        .uno-seat.active { border: 4px solid #fa3e4e !important; background: #fff4f4; box-shadow: 0 0 0 4px #fa3e4e55, 0 3px 15px #8a102a88; transform: scale(1.09); }
-        .uno-seat-avatar { width: 27px; height: 27px; flex: 0 0 27px; display: grid; place-items: center; border-radius: 50%; background: #fff3d6; font-size: 16px; }
-        .uno-seat-name { max-width: 64px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: .7rem; font-weight: 900; }
-        .uno-seat-count { margin-left: auto; color: #54616a; font-size: .65rem; font-weight: 900; white-space: nowrap; }
+        .uno-seats { position: absolute; inset: 0; z-index: 3; pointer-events: none; }
+        .uno-seat { position: absolute; min-width: 72px; max-width: 126px; padding: 4px 6px; display: flex; flex-direction: column; align-items: center; gap: 1px; border: 2px solid #ddd; border-radius: 13px; background: #fffffff2; box-shadow: 0 2px 7px #073f3b55; pointer-events: auto; transition: box-shadow .18s ease, background .18s ease; }
+        .uno-seat-top { top: 5px; left: 50%; transform: translateX(-50%); }
+        .uno-seat-left { top: 31%; left: 4px; }
+        .uno-seat-right { top: 31%; right: 4px; }
+        .uno-seat.active { border: 4px solid #fa3e4e !important; background: #fff4f4; box-shadow: 0 0 0 4px #fa3e4e55, 0 3px 15px #8a102a88; }
+        .uno-seat-head { max-width: 100%; display: flex; align-items: center; gap: 4px; }
+        .uno-seat-avatar { width: 22px; height: 22px; flex: 0 0 22px; display: grid; place-items: center; border-radius: 50%; background: #fff3d6; font-size: 14px; }
+        .uno-seat-name { max-width: 76px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: .67rem; font-weight: 900; }
+        .uno-mini-hand { height: 25px; max-width: 112px; display: flex; align-items: center; justify-content: center; overflow: hidden; padding: 1px 2px; }
+        .uno-mini-card-back { width: 17px; height: 23px; flex: 0 0 17px; margin-left: -8px; border: 1px solid #fff; border-radius: 4px; background: repeating-linear-gradient(45deg,#ff8b42 0 4px,#ffb44c 4px 8px); box-shadow: 0 1px 3px #34201388; }
+        .uno-mini-card-back:first-child { margin-left: 0; }
+        .uno-mini-more { margin-left: 3px; padding: 2px 4px; border-radius: 7px; background: #fff3bf; color: #7a3e00; font-size: .58rem; font-weight: 1000; white-space: nowrap; }
         .uno-center { position: absolute; top: 51%; left: 50%; transform: translate(-50%,-50%); display: flex; flex-direction: column; align-items: center; gap: 11px; }
         .uno-piles { display: flex; align-items: center; justify-content: center; gap: 18px; }
         .uno-pile { display: flex; flex-direction: column; align-items: center; gap: 5px; color: #fff; font-size: .72rem; font-weight: 900; text-shadow: 0 1px 4px #164f4c; }
@@ -403,10 +410,14 @@
         .uno-card-face.yellow .uno-card-symbol { color: #654500; }
         .uno-card-face.wild .uno-card-symbol { font-size: 1.16rem; }
         .uno-current-color { min-height: 28px; padding: 5px 11px; border: 1px solid #ffffff55; border-radius: 999px; background: #064f4b66; color: white; font-size: .75rem; font-weight: 900; text-shadow: 0 1px 2px #064f4b; }
-        .uno-direction { color: #fff; font-size: .72rem; font-weight: 900; text-shadow: 0 1px 4px #164f4c; }
+        .uno-direction { display: flex; align-items: center; gap: 5px; color: #fff; font-size: .75rem; font-weight: 1000; text-shadow: 0 1px 4px #164f4c; }
+        .uno-direction-arrow { display: inline-grid; place-items: center; width: 27px; height: 27px; border: 2px solid #ffffffc9; border-radius: 50%; background: #ffffff22; font-size: 1.15rem; line-height: 1; transform: rotate(0deg); transition: transform .82s cubic-bezier(.18,.8,.25,1); }
+        .uno-direction-arrow.spinning { animation: unoArrowPulse .82s ease-out; }
+        @keyframes unoArrowPulse { 35% { scale: 1.38; filter: drop-shadow(0 0 6px #fff); } 100% { scale: 1; filter: none; } }
         .uno-my-seat { position: absolute; bottom: 11px; left: 50%; transform: translateX(-50%); padding: 5px 11px 5px 5px; display: flex; align-items: center; gap: 7px; border: 2px solid #adb5bd; border-radius: 24px; background: #fffdf5; box-shadow: 0 3px 9px #073f3b66; white-space: nowrap; transition: border .15s ease, box-shadow .15s ease, background .15s ease; }
         .uno-my-seat.active { border: 4px solid #fa3e4e; background: #fff4f4; box-shadow: 0 0 0 5px #fa3e4e55, 0 3px 15px #8a102a88; }
         .uno-my-seat.active .uno-seat-badge { color: #c92a2a; }
+        .uno-my-seat .uno-call-button { width: auto; min-height: 33px; margin: 0; padding: 5px 9px; border: 0; border-radius: 10px; font-size: .78rem; font-weight: 1000; white-space: nowrap; }
         .uno-my-seat .uno-seat-avatar { width: 29px; height: 29px; flex-basis: 29px; }
         .uno-my-seat-name { font-size: .78rem; font-weight: 900; }
         .uno-seat-badge { color: #16835e; font-size: .68rem; font-weight: 1000; }
@@ -436,8 +447,16 @@
         .uno-flying-card { position: fixed; z-index: 1400; pointer-events: none; transition: left .42s cubic-bezier(.2,.8,.2,1), top .42s cubic-bezier(.2,.8,.2,1), transform .42s ease, opacity .42s ease; }
         @media (max-width: 390px) {
             .uno-arena { min-height: 385px; border-width: 7px; border-radius: 30px; }
-            .uno-seat { min-width: 96px; min-height: 36px; gap: 4px; }
-            .uno-seat-name { max-width: 54px; }
+            .uno-seat { min-width: 64px; max-width: 92px; padding: 3px 4px; }
+            .uno-seat-name { max-width: 60px; font-size: .61rem; }
+            .uno-seat-left { left: 2px; }
+            .uno-seat-right { right: 2px; }
+            .uno-mini-hand { max-width: 90px; }
+            .uno-mini-card-back { width: 15px; height: 21px; flex-basis: 15px; margin-left: -8px; }
+            .uno-draw-button { width: 49px; height: 71px; }
+            .uno-discard-zone { width: 70px; height: 96px; }
+            .uno-discard-zone .uno-card-face { width: 58px; height: 84px; border-width: 3px; border-radius: 11px; }
+            .uno-piles { gap: 9px; }
             .uno-hand-card { flex-basis: 59px; width: 59px; height: 92px; margin-left: -10px; }
             .uno-hand-row { min-height: 110px; }
         }
@@ -578,7 +597,7 @@
         <div class="uno-topbar">
             <div class="uno-headline">
                 <span>🃏 냥이 UNO</span>
-                <span id="uno-room-label" class="uno-room-label">방 0000 · 5명</span>
+                <span id="uno-room-label" class="uno-room-label">방 0000 · 4명</span>
             </div>
             <button id="uno-reset-btn" class="uno-reset" type="button" onclick="confirmReset()">🔄 새로하기</button>
         </div>
@@ -602,12 +621,16 @@
                     </div>
                 </div>
                 <div id="uno-current-color" class="uno-current-color">현재 색 · 빨강</div>
-                <div id="uno-direction" class="uno-direction">➡️ 시계 방향</div>
+                <div id="uno-direction" class="uno-direction" aria-live="polite">
+                    <span id="uno-direction-arrow" class="uno-direction-arrow">↻</span>
+                    <span id="uno-direction-label">시계 방향</span>
+                </div>
             </div>
             <div id="uno-my-seat" class="uno-my-seat">
                 <span class="uno-seat-avatar">🙋</span>
                 <span id="uno-my-name" class="uno-my-seat-name">나</span>
                 <span id="uno-my-seat-badge" class="uno-seat-badge"></span>
+                <button id="uno-call-btn" class="uno-action-button uno-call-button hidden" type="button">UNO!</button>
             </div>
         </section>
         <section class="uno-hand-panel" aria-label="내 UNO 손패">
@@ -617,10 +640,9 @@
             </div>
             <div id="uno-hand-row" class="uno-hand-row"></div>
             <div class="uno-actions">
-                <span id="uno-hand-hint" class="helper-text">밝게 빛나는 카드를 눌러봐!</span>
+                <span id="uno-hand-hint" class="helper-text">덱을 눌러 카드 한 장을 얻을 수 있어!</span>
                 <div style="display:flex;gap:6px">
                     <button id="uno-pass-btn" class="uno-action-button uno-pass-button hidden" type="button">차례 넘기기</button>
-                    <button id="uno-call-btn" class="uno-action-button uno-call-button hidden" type="button">UNO!</button>
                 </div>
             </div>
         </section>
@@ -1236,8 +1258,9 @@
         socket.emit('uno-play-card', { cardId });
     }
 
-    function animateUnoAction(action, startRect, targetRect) {
+    function animateUnoAction(action, startRect, targetRect, delayMs = 0) {
         if (!action || !startRect || !targetRect) return;
+        const launch = () => {
         const flight = document.createElement('div');
         flight.className = 'uno-flying-card';
         const width = Math.min(62, Math.max(38, startRect.width || 58));
@@ -1262,7 +1285,10 @@
             flight.style.transform = 'translate(-50%,-50%) scale(.42) rotate(12deg)';
             flight.style.opacity = '.25';
         });
-        setTimeout(() => flight.remove(), 480);
+        setTimeout(() => flight.remove(), 500);
+        };
+        if (delayMs > 0) setTimeout(launch, delayMs);
+        else launch();
     }
 
     function unoActionMessage(action, state) {
@@ -1309,6 +1335,7 @@
         const priorActionId = lastUnoActionId;
         const action = uno.lastAction;
         let startRect = null;
+        let effectDrawSourceRect = null;
         if (action && action.id !== priorActionId) {
             let source = null;
             if (action.type === 'play' && action.playerId === socket.id) {
@@ -1320,6 +1347,10 @@
                 source = document.getElementById('uno-draw-pile');
             }
             if (source) startRect = source.getBoundingClientRect();
+            if (action.type === 'play' && action.effectDrawCount > 0) {
+                const drawSource = document.getElementById('uno-draw-pile');
+                if (drawSource) effectDrawSourceRect = drawSource.getBoundingClientRect();
+            }
         }
 
         window.lastUnoState = state;
@@ -1336,16 +1367,31 @@
         document.getElementById('uno-draw-count').textContent = `덱 ${uno.drawPileCount}장`;
         document.getElementById('uno-current-color').textContent = `현재 색 · ${UNO_COLOR_LABELS[uno.currentColor] || '무지개'}`;
         document.getElementById('uno-current-color').style.background = UNO_COLOR_HEX[uno.currentColor] || '#7048e8';
-        document.getElementById('uno-direction').textContent = uno.direction === 1 ? '➡️ 시계 방향' : '⬅️ 반대 방향';
+        const directionArrow = document.getElementById('uno-direction-arrow');
+        directionArrow.style.transform = uno.direction === 1 ? 'rotate(0deg)' : 'rotate(180deg)';
+        document.getElementById('uno-direction-label').textContent = uno.direction === 1 ? '시계 방향' : '반대 방향';
+        if (action && action.id !== priorActionId && action.type === 'play' && action.card?.kind === 'reverse') {
+            directionArrow.classList.remove('spinning');
+            void directionArrow.offsetWidth;
+            directionArrow.classList.add('spinning');
+            setTimeout(() => directionArrow.classList.remove('spinning'), 900);
+        }
 
         const opponents = uno.playerOrder.filter((id) => id !== socket.id).map((id) => state.players[id]).filter(Boolean);
-        document.getElementById('uno-seats').innerHTML = opponents.map((player) => {
+        const opponentPositions = opponents.length === 1 ? ['top'] : opponents.length === 2 ? ['left', 'right'] : ['top', 'left', 'right'];
+        document.getElementById('uno-seats').innerHTML = opponents.map((player, index) => {
             const active = uno.currentPlayerId === player.id;
             const seatColor = COLOR_HEX[player.color] || '#ced4da';
-            return `<div class="uno-seat ${active ? 'active' : ''}" data-player-id="${escapeHtml(player.id)}" style="border-color:${seatColor}">
-                <span class="uno-seat-avatar">🐱</span>
-                <span class="uno-seat-name">${escapeHtml(player.name)}</span>
-                <span class="uno-seat-count">🃏 ${player.unoHandCount}장</span>
+            const cardCount = Math.max(0, Number(player.unoHandCount) || 0);
+            const shownBacks = Math.min(cardCount, 7);
+            const backs = Array.from({ length: shownBacks }, () => '<span class="uno-mini-card-back"></span>').join('');
+            const extra = cardCount > shownBacks ? `<span class="uno-mini-more">+${cardCount - shownBacks}</span>` : '';
+            return `<div class="uno-seat uno-seat-${opponentPositions[index]} ${active ? 'active' : ''}" data-player-id="${escapeHtml(player.id)}" aria-label="${escapeHtml(player.name)} 카드 ${cardCount}장" style="border-color:${seatColor}">
+                <div class="uno-seat-head">
+                    <span class="uno-seat-avatar">🐱</span>
+                    <span class="uno-seat-name">${escapeHtml(player.name)}</span>
+                </div>
+                <div class="uno-mini-hand">${backs}${extra}</div>
             </div>`;
         }).join('');
 
@@ -1379,7 +1425,13 @@
         drawPile.classList.toggle('ready', !drawPile.disabled);
         document.getElementById('uno-pass-btn').classList.toggle('hidden', !myTurn || !!pending || uno.drewCardId === null || uno.drewCardId === undefined);
         document.getElementById('uno-call-btn').classList.toggle('hidden', !pendingForMe);
-        document.getElementById('uno-hand-hint').textContent = hand.length === 1 ? '카드가 한 장이야!' : '밝게 빛나는 카드를 눌러봐!';
+        document.getElementById('uno-hand-hint').textContent = pendingForMe
+            ? '테이블 위 내 이름 옆 UNO!를 눌러!'
+            : myTurn && uno.drewCardId !== null && uno.drewCardId !== undefined
+                ? '뽑은 카드를 내거나 차례를 넘길 수 있어!'
+                : myTurn
+                    ? '덱을 눌러 카드 한 장을 얻을 수 있어!'
+                    : '친구 차례를 기다려줘!';
 
         if (unoClockTimer) clearInterval(unoClockTimer);
         const clock = document.getElementById('uno-clock');
@@ -1406,6 +1458,18 @@
                         : [...document.querySelectorAll('#uno-seats .uno-seat')].find((node) => node.dataset.playerId === action.playerId);
                 }
                 if (target && startRect) animateUnoAction(action, startRect, target.getBoundingClientRect());
+
+                if (action.type === 'play' && action.effectTargetId && action.effectDrawCount > 0 && effectDrawSourceRect) {
+                    const drawTarget = action.effectTargetId === socket.id
+                        ? document.getElementById('uno-hand-row')
+                        : [...document.querySelectorAll('#uno-seats .uno-seat')].find((node) => node.dataset.playerId === action.effectTargetId);
+                    if (drawTarget) {
+                        const targetRect = drawTarget.getBoundingClientRect();
+                        for (let index = 0; index < action.effectDrawCount; index++) {
+                            animateUnoAction({ type: 'draw' }, effectDrawSourceRect, targetRect, 520 + index * 430);
+                        }
+                    }
+                }
             });
         }
     }
@@ -1476,7 +1540,7 @@
                 unseated.length > 0 ? `👀 자리 고르는 중: ${unseated.join(', ')}` : '✨ 모두 자리에 앉았어!';
 
             let gridHtml = '';
-            SEATS.forEach(seat => {
+            SEATS.slice(0, isUnoRoom ? 4 : SEATS.length).forEach(seat => {
                 const occupant = allPlayers.find(p => p.color === seat.color);
                 if (occupant) {
                     const isMe = occupant.id === myId;
@@ -1689,6 +1753,19 @@
                     : [...document.querySelectorAll('#uno-seats .uno-seat')].find((node) => node.dataset.playerId === finalUnoAction.playerId);
                 const target = document.getElementById('uno-discard-zone');
                 if (source && target) animateUnoAction(finalUnoAction, source.getBoundingClientRect(), target.getBoundingClientRect());
+                if (finalUnoAction.effectTargetId && finalUnoAction.effectDrawCount > 0) {
+                    const drawSource = document.getElementById('uno-draw-pile');
+                    const drawTarget = finalUnoAction.effectTargetId === socket.id
+                        ? document.getElementById('uno-hand-row')
+                        : [...document.querySelectorAll('#uno-seats .uno-seat')].find((node) => node.dataset.playerId === finalUnoAction.effectTargetId);
+                    if (drawSource && drawTarget) {
+                        const sourceRect = drawSource.getBoundingClientRect();
+                        const targetRect = drawTarget.getBoundingClientRect();
+                        for (let index = 0; index < finalUnoAction.effectDrawCount; index++) {
+                            animateUnoAction({ type: 'draw' }, sourceRect, targetRect, 520 + index * 430);
+                        }
+                    }
+                }
                 lastUnoActionId = finalUnoAction.id;
             }
             if (unoClockTimer) clearInterval(unoClockTimer);
