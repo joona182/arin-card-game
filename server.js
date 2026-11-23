@@ -18,7 +18,10 @@ const CHAT_HISTORY_LIMIT = 50;
 const CHAT_COOLDOWN_MS = 600;
 const DOBBLE_SYMBOL_COUNT = 57;
 const DOBBLE_SYMBOLS_PER_CARD = 8;
+const UNO_TURN_MS = 30000;
+const UNO_CALL_MS = 3000;
 const SEAT_COLORS = new Set(['red', 'blue', 'green', 'orange', 'purple']);
+const UNO_COLORS = ['red', 'blue', 'yellow', 'green'];
 const INITIAL_SCORE_DECK = [
     { type: 'cat', value: 1, file: 'card_+1' }, { type: 'cat', value: 2, file: 'card_+2' },
     { type: 'cat', value: 3, file: 'card_+3' }, { type: 'cat', value: 4, file: 'card_+4' },
@@ -50,6 +53,114 @@ function shuffle(array) {
         [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
     }
     return shuffled;
+}
+
+function generateUnoDeck() {
+    const cards = [];
+    let id = 1;
+    const add = (color, kind, value) => cards.push({ id: id++, color, kind, value });
+
+    for (const color of UNO_COLORS) {
+        add(color, 'number', 0);
+        for (let value = 1; value <= 9; value++) {
+            add(color, 'number', value);
+            add(color, 'number', value);
+        }
+        for (const kind of ['skip', 'reverse', 'draw2']) {
+            add(color, kind, kind);
+            add(color, kind, kind);
+        }
+    }
+    for (let i = 0; i < 4; i++) {
+        add(null, 'wild', 'wild');
+        add(null, 'wild4', 'wild4');
+    }
+    return cards;
+}
+
+function clearUnoTimer(room) {
+    if (room?.uno?.timer) clearTimeout(room.uno.timer);
+    if (room?.uno) room.uno.timer = null;
+}
+
+function unoPlayerAt(room, offset) {
+    const uno = room.uno;
+    const count = uno.playerOrder.length;
+    if (!count) return null;
+    const index = (uno.currentIndex + uno.direction * offset % count + count) % count;
+    return room.players[uno.playerOrder[index]] || null;
+}
+
+function isUnoCardPlayable(card, uno) {
+    const top = uno.discardPile[uno.discardPile.length - 1];
+    return card.kind === 'wild' || card.kind === 'wild4' ||
+        card.color === uno.currentColor ||
+        (card.kind === top.kind && card.value === top.value);
+}
+
+function drawUnoCard(room) {
+    const uno = room.uno;
+    if (!uno.drawPile.length && uno.discardPile.length > 1) {
+        const topCard = uno.discardPile.pop();
+        uno.drawPile = shuffle(uno.discardPile);
+        uno.discardPile = [topCard];
+    }
+    return uno.drawPile.pop() || null;
+}
+
+function drawUnoCards(room, player, count) {
+    const drawn = [];
+    for (let i = 0; i < count; i++) {
+        const card = drawUnoCard(room);
+        if (!card) break;
+        player.hand.push(card);
+        drawn.push(card);
+    }
+    return drawn;
+}
+
+function nextUnoTurn(room, steps = 1) {
+    const uno = room.uno;
+    clearUnoTimer(room);
+    uno.pendingUnoCall = null;
+    uno.drewCardId = null;
+    const count = uno.playerOrder.length;
+    if (!count) return;
+    uno.currentIndex = (uno.currentIndex + uno.direction * steps % count + count) % count;
+    uno.turnExpiresAt = Date.now() + UNO_TURN_MS;
+    scheduleUnoTimer(room);
+}
+
+function scheduleUnoTimer(room) {
+    clearUnoTimer(room);
+    const uno = room.uno;
+    if (!uno || room.gameState !== 'UNO_PLAYING') return;
+    const deadline = uno.pendingUnoCall?.deadline || uno.turnExpiresAt;
+    uno.timer = setTimeout(() => {
+        if (room.gameState !== 'UNO_PLAYING' || !room.uno) return;
+        const current = room.players[room.uno.playerOrder[room.uno.currentIndex]];
+        if (!current) return;
+
+        if (room.uno.pendingUnoCall) {
+            const pending = room.uno.pendingUnoCall;
+            if (current.id !== pending.playerId) return;
+            const drawn = drawUnoCards(room, current, 2);
+            room.uno.lastAction = {
+                id: ++room.uno.actionSequence, type: 'uno-missed', playerId: current.id,
+                drawCount: drawn.length
+            };
+            nextUnoTurn(room, pending.nextSteps);
+        } else {
+            let drawn = [];
+            if (room.uno.drewCardId === null) drawn = drawUnoCards(room, current, 1);
+            room.uno.lastAction = {
+                id: ++room.uno.actionSequence, type: 'timeout', playerId: current.id,
+                drawCount: drawn.length
+            };
+            nextUnoTurn(room, 1);
+        }
+        broadcastRoom(room);
+    }, Math.max(0, deadline - Date.now()));
 }
 
 function generateDobbleDeck() {
@@ -105,6 +216,7 @@ function snapshotFor(room, viewerId) {
             ready: player.ready,
             score: player.score,
             hand: isViewer ? [...player.hand] : [],
+            unoHandCount: room.gameMode === 'UNO' ? player.hand.length : 0,
             playedCard: isViewer || revealCards
                 ? player.playedCard
                 : (player.playedCard === null ? null : 'HIDDEN'),
@@ -138,6 +250,26 @@ function snapshotFor(room, viewerId) {
             id: room.lastDobbleClaim.id,
             winnerId: room.lastDobbleClaim.winnerId,
             card: { ...room.lastDobbleClaim.card, symbols: [...room.lastDobbleClaim.card.symbols] }
+        } : null,
+        uno: room.uno ? {
+            playerOrder: [...room.uno.playerOrder],
+            currentPlayerId: room.uno.playerOrder[room.uno.currentIndex] || null,
+            direction: room.uno.direction,
+            currentColor: room.uno.currentColor,
+            topCard: room.uno.discardPile.length ? { ...room.uno.discardPile[room.uno.discardPile.length - 1] } : null,
+            discardCount: room.uno.discardPile.length,
+            drawPileCount: room.uno.drawPile.length,
+            turnExpiresAt: room.uno.turnExpiresAt,
+            pendingUnoCall: room.uno.pendingUnoCall ? {
+                playerId: room.uno.pendingUnoCall.playerId,
+                deadline: room.uno.pendingUnoCall.deadline
+            } : null,
+            drewCardId: room.uno.playerOrder[room.uno.currentIndex] === viewerId ? room.uno.drewCardId : null,
+            lastAction: room.uno.lastAction ? {
+                ...room.uno.lastAction,
+                card: room.uno.lastAction.card ? { ...room.uno.lastAction.card } : null
+            } : null,
+            winnerId: room.uno.winnerId
         } : null
     };
 }
@@ -202,7 +334,7 @@ io.on('connection', (socket) => {
         if (rejectIfAlreadyInRoom()) return;
 
         const createData = typeof payload === 'string' ? { name: payload, gameMode: 'EYE' } : (payload || {});
-        const gameMode = createData.gameMode === 'DOBBLE' ? 'DOBBLE' : 'EYE';
+        const gameMode = ['DOBBLE', 'UNO'].includes(createData.gameMode) ? createData.gameMode : 'EYE';
         let roomCode;
         try {
             roomCode = generateRoomCode();
@@ -227,7 +359,8 @@ io.on('connection', (socket) => {
             dobbleDeck: [],
             dobbleCenterCard: null,
             dobbleCardVersion: 0,
-            lastDobbleClaim: null
+            lastDobbleClaim: null,
+            uno: null
         };
         rooms.set(roomCode, room);
         joinRoomLogic(room, createData.name);
@@ -343,6 +476,8 @@ io.on('connection', (socket) => {
         room.dobbleCenterCard = null;
         room.dobbleCardVersion = 0;
         room.lastDobbleClaim = null;
+        clearUnoTimer(room);
+        room.uno = null;
 
         seatedPlayers.forEach((player) => {
             player.score = 0;
@@ -365,6 +500,31 @@ io.on('connection', (socket) => {
             room.dobbleCardVersion = 1;
             room.currentRound = 0;
             room.gameState = 'DOBBLE_PLAYING';
+        } else if (room.gameMode === 'UNO') {
+            const drawPile = shuffle(generateUnoDeck());
+            for (let dealt = 0; dealt < 7; dealt++) {
+                for (const player of seatedPlayers) player.hand.push(drawPile.pop());
+            }
+            const firstNumberIndex = drawPile.findIndex((card) => card.kind === 'number');
+            const firstCard = drawPile.splice(firstNumberIndex, 1)[0];
+            room.uno = {
+                drawPile,
+                discardPile: [firstCard],
+                playerOrder: seatedPlayers.map((player) => player.id),
+                currentIndex: 0,
+                direction: 1,
+                currentColor: firstCard.color,
+                turnExpiresAt: Date.now() + UNO_TURN_MS,
+                pendingUnoCall: null,
+                drewCardId: null,
+                actionSequence: 0,
+                lastAction: null,
+                winnerId: null,
+                timer: null
+            };
+            room.currentRound = 1;
+            room.gameState = 'UNO_PLAYING';
+            scheduleUnoTimer(room);
         } else {
             room.gameState = 'PLAYING';
             room.currentRound = 1;
@@ -383,6 +543,8 @@ io.on('connection', (socket) => {
         if (!room || !requireHost(room)) return;
 
         room.roundToken += 1;
+        clearUnoTimer(room);
+        room.uno = null;
         room.gameState = 'LOBBY';
         room.currentRound = 0;
         room.scoreDeck = [];
@@ -405,6 +567,125 @@ io.on('connection', (socket) => {
             player.dobbleLockVersion = 0;
         });
 
+        broadcastRoom(room);
+    });
+
+    socket.on('uno-draw', () => {
+        const room = getCurrentRoom();
+        const uno = room?.uno;
+        if (!room || room.gameMode !== 'UNO' || room.gameState !== 'UNO_PLAYING' || !uno) return;
+        const player = room.players[socket.id];
+        if (!player || uno.playerOrder[uno.currentIndex] !== socket.id || uno.pendingUnoCall || uno.drewCardId !== null) return;
+        if (Date.now() >= uno.turnExpiresAt) return;
+
+        const card = drawUnoCard(room);
+        if (!card) {
+            uno.lastAction = { id: ++uno.actionSequence, type: 'draw-empty', playerId: player.id };
+            nextUnoTurn(room, 1);
+        } else {
+            player.hand.push(card);
+            uno.lastAction = { id: ++uno.actionSequence, type: 'draw', playerId: player.id };
+            if (isUnoCardPlayable(card, uno)) {
+                uno.drewCardId = card.id;
+                scheduleUnoTimer(room);
+            } else {
+                nextUnoTurn(room, 1);
+            }
+        }
+        broadcastRoom(room);
+    });
+
+    socket.on('uno-end-turn', () => {
+        const room = getCurrentRoom();
+        const uno = room?.uno;
+        if (!room || room.gameMode !== 'UNO' || room.gameState !== 'UNO_PLAYING' || !uno) return;
+        if (uno.playerOrder[uno.currentIndex] !== socket.id || uno.pendingUnoCall || uno.drewCardId === null) return;
+        uno.lastAction = { id: ++uno.actionSequence, type: 'pass', playerId: socket.id };
+        nextUnoTurn(room, 1);
+        broadcastRoom(room);
+    });
+
+    socket.on('uno-play-card', (payload = {}) => {
+        const room = getCurrentRoom();
+        const uno = room?.uno;
+        const player = room?.players[socket.id];
+        if (!room || room.gameMode !== 'UNO' || room.gameState !== 'UNO_PLAYING' || !uno || !player) return;
+        if (uno.playerOrder[uno.currentIndex] !== socket.id || uno.pendingUnoCall) return;
+        if (Date.now() >= uno.turnExpiresAt) return;
+
+        const cardId = Number(payload.cardId);
+        const handIndex = player.hand.findIndex((card) => card.id === cardId);
+        if (!Number.isInteger(cardId) || handIndex < 0) return;
+        const card = player.hand[handIndex];
+        if (uno.drewCardId !== null && card.id !== uno.drewCardId) return;
+        if (!isUnoCardPlayable(card, uno)) return;
+
+        const chosenColor = UNO_COLORS.includes(payload.chosenColor) ? payload.chosenColor : null;
+        if ((card.kind === 'wild' || card.kind === 'wild4') && !chosenColor) {
+            socket.emit('error-msg', '카드 색을 먼저 골라줘!');
+            return;
+        }
+        if (card.kind === 'wild4' && player.hand.some((held) => held.id !== card.id && held.color === uno.currentColor)) {
+            socket.emit('error-msg', '같은 색 카드가 있으면 +4 카드는 낼 수 없어!');
+            return;
+        }
+
+        player.hand.splice(handIndex, 1);
+        uno.discardPile.push({ ...card });
+        uno.currentColor = chosenColor || card.color;
+        uno.drewCardId = null;
+
+        let nextSteps = 1;
+        let effectTargetId = null;
+        let effectDrawCount = 0;
+        if (card.kind === 'reverse') {
+            uno.direction *= -1;
+            if (uno.playerOrder.length === 2) nextSteps = 2;
+        } else if (card.kind === 'skip') {
+            nextSteps = 2;
+        } else if (card.kind === 'draw2' || card.kind === 'wild4') {
+            const target = unoPlayerAt(room, 1);
+            if (target) {
+                effectTargetId = target.id;
+                effectDrawCount = drawUnoCards(room, target, card.kind === 'draw2' ? 2 : 4).length;
+            }
+            nextSteps = 2;
+        }
+
+        uno.lastAction = {
+            id: ++uno.actionSequence, type: 'play', playerId: player.id,
+            card: { ...card, chosenColor: chosenColor || null },
+            effectTargetId, effectDrawCount
+        };
+
+        if (player.hand.length === 0) {
+            clearUnoTimer(room);
+            uno.pendingUnoCall = null;
+            uno.winnerId = player.id;
+            room.gameState = 'GAME_OVER';
+        } else if (player.hand.length === 1) {
+            clearUnoTimer(room);
+            uno.pendingUnoCall = {
+                playerId: player.id,
+                deadline: Date.now() + UNO_CALL_MS,
+                nextSteps
+            };
+            scheduleUnoTimer(room);
+        } else {
+            nextUnoTurn(room, nextSteps);
+        }
+        broadcastRoom(room);
+    });
+
+    socket.on('uno-call', () => {
+        const room = getCurrentRoom();
+        const uno = room?.uno;
+        const pending = uno?.pendingUnoCall;
+        if (!room || room.gameMode !== 'UNO' || room.gameState !== 'UNO_PLAYING' || !uno || !pending) return;
+        if (pending.playerId !== socket.id || Date.now() > pending.deadline) return;
+        const nextSteps = pending.nextSteps;
+        uno.lastAction = { id: ++uno.actionSequence, type: 'uno-call', playerId: socket.id };
+        nextUnoTurn(room, nextSteps);
         broadcastRoom(room);
     });
 
@@ -582,12 +863,51 @@ io.on('connection', (socket) => {
         currentRoomCode = null;
 
         if (Object.keys(room.players).length === 0) {
+            clearUnoTimer(room);
             rooms.delete(room.roomCode);
             return;
         }
 
         if (wasHost) {
             room.hostId = Object.keys(room.players)[0];
+        }
+
+        if (room.gameState === 'UNO_PLAYING' && room.uno) {
+            const uno = room.uno;
+            clearUnoTimer(room);
+            const oldOrder = [...uno.playerOrder];
+            const oldCurrentIndex = uno.currentIndex;
+            const oldCurrentId = oldOrder[oldCurrentIndex];
+            const pendingSteps = uno.pendingUnoCall?.nextSteps || 1;
+            uno.playerOrder = oldOrder.filter((id) => id !== socket.id && room.players[id]);
+
+            if (uno.playerOrder.length < MIN_PLAYERS) {
+                uno.pendingUnoCall = null;
+                uno.winnerId = uno.playerOrder[0] || null;
+                room.gameState = 'GAME_OVER';
+                uno.lastAction = { id: ++uno.actionSequence, type: 'disconnect', playerId: socket.id };
+                broadcastRoom(room);
+                return;
+            }
+
+            if (oldCurrentId === socket.id) {
+                let nextId = null;
+                for (let offset = pendingSteps; offset <= oldOrder.length + pendingSteps; offset++) {
+                    const candidate = oldOrder[(oldCurrentIndex + uno.direction * offset % oldOrder.length + oldOrder.length) % oldOrder.length];
+                    if (uno.playerOrder.includes(candidate)) { nextId = candidate; break; }
+                }
+                uno.currentIndex = Math.max(0, uno.playerOrder.indexOf(nextId));
+                uno.pendingUnoCall = null;
+                uno.drewCardId = null;
+                uno.turnExpiresAt = Date.now() + UNO_TURN_MS;
+            } else {
+                uno.currentIndex = Math.max(0, uno.playerOrder.indexOf(oldCurrentId));
+                if (uno.pendingUnoCall) uno.pendingUnoCall.deadline = Math.min(uno.pendingUnoCall.deadline, Date.now() + UNO_CALL_MS);
+            }
+            uno.lastAction = { id: ++uno.actionSequence, type: 'disconnect', playerId: socket.id };
+            scheduleUnoTimer(room);
+            broadcastRoom(room);
+            return;
         }
 
         const activePlayers = Object.values(room.players)
