@@ -516,12 +516,13 @@
         </div>
         <div class="rule-guide-box hidden" id="uno-rule-guide">
             <b>📜 냥이 UNO</b><br>
-            • 2~5명이 함께 해요. 처음에 카드 7장을 받아요.<br>
+            • 2~4명이 함께 해요. 처음에 카드 7장을 받아요.<br>
             • 가운데 카드와 색이나 숫자, 그림이 같은 카드를 내요.<br>
             • 카드를 못 내거나 더 뽑고 싶으면 덱을 눌러 한 장을 뽑아요.<br>
             • 카드가 한 장 남으면 3초 안에 <b>UNO!</b>를 눌러요. 놓치면 2장을 받아요.<br>
             • 차례는 30초예요. 시간이 끝나면 카드 한 장을 받고 다음 친구 차례로 넘어가요.<br>
-            • 카드를 먼저 다 낸 친구가 이겨요!
+            • 숫자 카드는 숫자만큼, 특수 카드는 모두 10점이에요.<br>
+            • 먼저 끝낸 친구가 다른 친구들의 남은 카드 점수를 얻어요!
         </div>
 
         <div id="dobble-assets-status" class="lobby-waiting-box dobble-assets-status hidden" role="status" aria-live="polite">
@@ -701,6 +702,7 @@
     let lastUnoActionId = 0;
     let pendingUnoCardId = null;
     let lastUnoRoomCode = '';
+    let lastUnoDealId = null;
     let unoActionNoticeText = '';
     let unoActionNoticeUntil = 0;
     let unoActionNoticeTimer = null;
@@ -1291,6 +1293,23 @@
         else launch();
     }
 
+    function animateUnoDeal(state) {
+        const source = document.getElementById('uno-draw-pile');
+        if (!source || !state?.uno) return;
+        const sourceRect = source.getBoundingClientRect();
+        let sequence = 0;
+        for (let cardIndex = 0; cardIndex < 7; cardIndex++) {
+            for (const playerId of state.uno.playerOrder) {
+                const target = playerId === socket.id
+                    ? document.getElementById('uno-hand-row')
+                    : [...document.querySelectorAll('#uno-seats .uno-seat')]
+                        .find((node) => node.dataset.playerId === playerId);
+                if (target) animateUnoAction({ type: 'draw' }, sourceRect, target.getBoundingClientRect(), sequence * 110);
+                sequence++;
+            }
+        }
+    }
+
     function unoActionMessage(action, state) {
         if (!action) return '';
         const actor = state.players[action.playerId]?.name || '친구';
@@ -1319,6 +1338,7 @@
     function defaultUnoMessage(state) {
         const uno = state?.uno;
         if (!uno) return '';
+        if (state.gameState === 'UNO_DEALING') return '🐾 카드 7장을 나눠 받는 중이야!';
         const pending = uno.pendingUnoCall;
         if (pending) {
             const caller = state.players[pending.playerId];
@@ -1332,6 +1352,7 @@
     function renderUno(state, me, isHost) {
         const uno = state.uno;
         if (!uno || !me) return;
+        const isDealing = state.gameState === 'UNO_DEALING';
         const priorActionId = lastUnoActionId;
         const action = uno.lastAction;
         let startRect = null;
@@ -1356,7 +1377,7 @@
         window.lastUnoState = state;
         const currentPlayer = state.players[uno.currentPlayerId];
         const pending = uno.pendingUnoCall;
-        const myTurn = uno.currentPlayerId === socket.id;
+        const myTurn = !isDealing && uno.currentPlayerId === socket.id;
         const pendingForMe = pending?.playerId === socket.id;
         const drawPile = document.getElementById('uno-draw-pile');
         document.getElementById('uno-room-label').textContent = `방 ${state.roomCode} · ${uno.playerOrder.length}명`;
@@ -1380,9 +1401,9 @@
         const opponents = uno.playerOrder.filter((id) => id !== socket.id).map((id) => state.players[id]).filter(Boolean);
         const opponentPositions = opponents.length === 1 ? ['top'] : opponents.length === 2 ? ['left', 'right'] : ['top', 'left', 'right'];
         document.getElementById('uno-seats').innerHTML = opponents.map((player, index) => {
-            const active = uno.currentPlayerId === player.id;
+            const active = !isDealing && uno.currentPlayerId === player.id;
             const seatColor = COLOR_HEX[player.color] || '#ced4da';
-            const cardCount = Math.max(0, Number(player.unoHandCount) || 0);
+            const cardCount = isDealing ? 0 : Math.max(0, Number(player.unoHandCount) || 0);
             const shownBacks = Math.min(cardCount, 7);
             const backs = Array.from({ length: shownBacks }, () => '<span class="uno-mini-card-back"></span>').join('');
             const extra = cardCount > shownBacks ? `<span class="uno-mini-more">+${cardCount - shownBacks}</span>` : '';
@@ -1397,8 +1418,8 @@
 
         const discard = document.getElementById('uno-discard-zone');
         discard.innerHTML = uno.topCard ? unoCardFaceMarkup(uno.topCard) : '';
-        const hand = me.hand || [];
-        document.getElementById('uno-hand-count').textContent = `${hand.length}장`;
+        const hand = isDealing ? [] : (me.hand || []);
+        document.getElementById('uno-hand-count').textContent = isDealing ? '나눠 받는 중' : `${hand.length}장`;
         document.getElementById('uno-hand-row').innerHTML = hand.map((card) => {
             const playable = myTurn && !pending && unoCardIsPlayable(card, uno, me);
             return `<button id="uno-hand-card-${card.id}" class="uno-hand-card ${playable ? 'playable' : ''}" type="button"
@@ -1421,11 +1442,13 @@
         message.textContent = showingActionNotice ? unoActionNoticeText : defaultUnoMessage(state);
         document.getElementById('uno-message').classList.toggle('effect', showingActionNotice);
 
-        drawPile.disabled = !myTurn || !!pending || uno.drewCardId !== null && uno.drewCardId !== undefined;
+        drawPile.disabled = isDealing || !myTurn || !!pending || uno.drewCardId !== null && uno.drewCardId !== undefined;
         drawPile.classList.toggle('ready', !drawPile.disabled);
-        document.getElementById('uno-pass-btn').classList.toggle('hidden', !myTurn || !!pending || uno.drewCardId === null || uno.drewCardId === undefined);
-        document.getElementById('uno-call-btn').classList.toggle('hidden', !pendingForMe);
-        document.getElementById('uno-hand-hint').textContent = pendingForMe
+        document.getElementById('uno-pass-btn').classList.toggle('hidden', isDealing || !myTurn || !!pending || uno.drewCardId === null || uno.drewCardId === undefined);
+        document.getElementById('uno-call-btn').classList.toggle('hidden', isDealing || !pendingForMe);
+        document.getElementById('uno-hand-hint').textContent = isDealing
+            ? '🐾 카드 7장을 나눠 받는 중이야!'
+            : pendingForMe
             ? '테이블 위 내 이름 옆 UNO!를 눌러!'
             : myTurn && uno.drewCardId !== null && uno.drewCardId !== undefined
                 ? '뽑은 카드를 내거나 차례를 넘길 수 있어!'
@@ -1435,6 +1458,19 @@
 
         if (unoClockTimer) clearInterval(unoClockTimer);
         const clock = document.getElementById('uno-clock');
+        if (isDealing) {
+            clock.textContent = '준비!';
+            clock.classList.remove('warning', 'urgent');
+            unoClockTimer = null;
+            const message = document.getElementById('uno-message-text');
+            message.textContent = defaultUnoMessage(state);
+            document.getElementById('uno-message').classList.remove('effect');
+            if (lastUnoDealId !== uno.dealId) {
+                lastUnoDealId = uno.dealId;
+                requestAnimationFrame(() => animateUnoDeal(state));
+            }
+            return;
+        }
         const deadlineServerTime = pending?.deadline || uno.turnExpiresAt;
         const serverTimeAtSnapshot = Number(state.serverTime) || Date.now();
         const deadlineMonotonic = performance.now() + Math.max(0, deadlineServerTime - serverTimeAtSnapshot);
@@ -1505,6 +1541,7 @@
             lastDobbleCardVersion = null;
             lastUnoActionId = 0;
             lastUnoRoomCode = state.roomCode;
+            lastUnoDealId = null;
             unoActionNoticeText = '';
             unoActionNoticeUntil = 0;
             if (unoActionNoticeTimer) clearTimeout(unoActionNoticeTimer);
@@ -1580,7 +1617,7 @@
                 document.getElementById('start-btn').classList.add('hidden');
             }
         }
-        else if (state.gameState === 'UNO_PLAYING') {
+        else if (state.gameState === 'UNO_PLAYING' || state.gameState === 'UNO_DEALING') {
             document.getElementById('login-screen').classList.add('hidden');
             document.getElementById('room-screen').classList.add('hidden');
             document.getElementById('game-screen').style.display = 'none';
@@ -1591,6 +1628,7 @@
             if (lastUnoRoomCode !== state.roomCode) {
                 lastUnoActionId = 0;
                 lastUnoRoomCode = state.roomCode;
+                lastUnoDealId = null;
             }
             renderUno(state, me, isHost);
         }
@@ -1793,7 +1831,7 @@
                 if (state.gameMode === 'UNO') {
                     if (a.id === state.uno?.winnerId) return -1;
                     if (b.id === state.uno?.winnerId) return 1;
-                    return a.unoHandCount - b.unoHandCount;
+                    return (a.unoHandPoints || 0) - (b.unoHandPoints || 0);
                 }
                 return b.score - a.score;
             });
@@ -1802,7 +1840,7 @@
                 let medal = idx === 0 ? '👑 1위' : `${idx + 1}위`;
                 rankHtml += `<div class="rank-item ${idx === 0 ? 'rank-1' : ''}">
                     <span>${medal}: ${escapeHtml(p.name)}</span>
-                    <span><b>${state.gameMode === 'UNO' ? (p.id === state.uno?.winnerId ? '카드 다 냈어!' : `남은 카드 ${p.unoHandCount}장`) : `${p.score}점`}</b></span>
+                    <span><b>${state.gameMode === 'UNO' ? (p.id === state.uno?.winnerId ? `+${state.uno?.winnerPoints || 0}점 획득!` : `${p.unoHandPoints || 0}점 · ${p.unoHandCount}장 남음`) : `${p.score}점`}</b></span>
                 </div>`;
             });
             document.getElementById('final-rank-list').innerHTML = rankHtml;

@@ -21,6 +21,7 @@ const DOBBLE_SYMBOL_COUNT = 57;
 const DOBBLE_SYMBOLS_PER_CARD = 8;
 const UNO_TURN_MS = 30000;
 const UNO_CALL_MS = 3000;
+const UNO_DEAL_CARD_STAGGER_MS = 110;
 const SEAT_COLORS = new Set(['red', 'blue', 'green', 'orange', 'purple']);
 const UNO_COLORS = ['red', 'blue', 'yellow', 'green'];
 const INITIAL_SCORE_DECK = [
@@ -79,9 +80,32 @@ function generateUnoDeck() {
     return cards;
 }
 
+function unoCardPoints(card) {
+    return card.kind === 'number' ? Number(card.value) || 0 : 10;
+}
+
+function unoHandPoints(hand) {
+    return hand.reduce((sum, card) => sum + unoCardPoints(card), 0);
+}
+
 function clearUnoTimer(room) {
     if (room?.uno?.timer) clearTimeout(room.uno.timer);
+    if (room?.uno?.dealTimer) clearTimeout(room.uno.dealTimer);
     if (room?.uno) room.uno.timer = null;
+    if (room?.uno) room.uno.dealTimer = null;
+}
+
+function scheduleUnoDeal(room) {
+    if (!room?.uno || room.gameState !== 'UNO_DEALING') return;
+    if (room.uno.dealTimer) clearTimeout(room.uno.dealTimer);
+    room.uno.dealTimer = setTimeout(() => {
+        if (room.gameState !== 'UNO_DEALING' || !room.uno) return;
+        room.uno.dealTimer = null;
+        room.gameState = 'UNO_PLAYING';
+        room.uno.turnExpiresAt = Date.now() + UNO_TURN_MS;
+        scheduleUnoTimer(room);
+        broadcastRoom(room);
+    }, Math.max(0, room.uno.dealEndsAt - Date.now()));
 }
 
 function unoPlayerAt(room, offset) {
@@ -218,6 +242,7 @@ function snapshotFor(room, viewerId) {
             score: player.score,
             hand: isViewer ? [...player.hand] : [],
             unoHandCount: room.gameMode === 'UNO' ? player.hand.length : 0,
+            unoHandPoints: room.gameMode === 'UNO' && room.gameState === 'GAME_OVER' ? unoHandPoints(player.hand) : null,
             playedCard: isViewer || revealCards
                 ? player.playedCard
                 : (player.playedCard === null ? null : 'HIDDEN'),
@@ -262,6 +287,8 @@ function snapshotFor(room, viewerId) {
             discardCount: room.uno.discardPile.length,
             drawPileCount: room.uno.drawPile.length,
             turnExpiresAt: room.uno.turnExpiresAt,
+            dealId: room.uno.dealId,
+            dealEndsAt: room.uno.dealEndsAt,
             pendingUnoCall: room.uno.pendingUnoCall ? {
                 playerId: room.uno.pendingUnoCall.playerId,
                 deadline: room.uno.pendingUnoCall.deadline
@@ -271,7 +298,8 @@ function snapshotFor(room, viewerId) {
                 ...room.uno.lastAction,
                 card: room.uno.lastAction.card ? { ...room.uno.lastAction.card } : null
             } : null,
-            winnerId: room.uno.winnerId
+            winnerId: room.uno.winnerId,
+            winnerPoints: room.uno.winnerPoints || 0
         } : null
     };
 }
@@ -523,17 +551,21 @@ io.on('connection', (socket) => {
                 currentIndex: 0,
                 direction: 1,
                 currentColor: firstCard.color,
-                turnExpiresAt: Date.now() + UNO_TURN_MS,
+                turnExpiresAt: 0,
+                dealId: room.roundToken,
+                dealEndsAt: Date.now() + Math.max(0, (seatedPlayers.length * 7 - 1) * UNO_DEAL_CARD_STAGGER_MS + 700),
                 pendingUnoCall: null,
                 drewCardId: null,
                 actionSequence: 0,
                 lastAction: null,
                 winnerId: null,
-                timer: null
+                winnerPoints: 0,
+                timer: null,
+                dealTimer: null
             };
             room.currentRound = 1;
-            room.gameState = 'UNO_PLAYING';
-            scheduleUnoTimer(room);
+            room.gameState = 'UNO_DEALING';
+            scheduleUnoDeal(room);
         } else {
             room.gameState = 'PLAYING';
             room.currentRound = 1;
@@ -671,6 +703,10 @@ io.on('connection', (socket) => {
             clearUnoTimer(room);
             uno.pendingUnoCall = null;
             uno.winnerId = player.id;
+            uno.winnerPoints = Object.values(room.players)
+                .filter((other) => other.id !== player.id)
+                .reduce((sum, other) => sum + unoHandPoints(other.hand), 0);
+            player.score = uno.winnerPoints;
             room.gameState = 'GAME_OVER';
         } else if (player.hand.length === 1) {
             clearUnoTimer(room);
@@ -879,6 +915,25 @@ io.on('connection', (socket) => {
 
         if (wasHost) {
             room.hostId = Object.keys(room.players)[0];
+        }
+
+        if (room.gameState === 'UNO_DEALING' && room.uno) {
+            const uno = room.uno;
+            clearUnoTimer(room);
+            const oldCurrentId = uno.playerOrder[uno.currentIndex];
+            uno.playerOrder = uno.playerOrder.filter((id) => id !== socket.id && room.players[id]);
+            if (uno.playerOrder.length < MIN_PLAYERS) {
+                uno.winnerId = uno.playerOrder[0] || null;
+                uno.winnerPoints = 0;
+                room.gameState = 'GAME_OVER';
+                uno.lastAction = { id: ++uno.actionSequence, type: 'disconnect', playerId: socket.id };
+            } else {
+                uno.currentIndex = Math.max(0, uno.playerOrder.indexOf(oldCurrentId));
+                uno.lastAction = { id: ++uno.actionSequence, type: 'disconnect', playerId: socket.id };
+                scheduleUnoDeal(room);
+            }
+            broadcastRoom(room);
+            return;
         }
 
         if (room.gameState === 'UNO_PLAYING' && room.uno) {
