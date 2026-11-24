@@ -240,7 +240,7 @@ function snapshotFor(room, viewerId) {
             color: player.color,
             ready: player.ready,
             score: player.score,
-            hand: isViewer ? [...player.hand] : [],
+            hand: isViewer || (room.gameMode === 'UNO' && room.gameState === 'GAME_OVER') ? [...player.hand] : [],
             unoHandCount: room.gameMode === 'UNO' ? player.hand.length : 0,
             unoHandPoints: room.gameMode === 'UNO' && room.gameState === 'GAME_OVER' ? unoHandPoints(player.hand) : null,
             playedCard: isViewer || revealCards
@@ -703,10 +703,8 @@ io.on('connection', (socket) => {
             clearUnoTimer(room);
             uno.pendingUnoCall = null;
             uno.winnerId = player.id;
-            uno.winnerPoints = Object.values(room.players)
-                .filter((other) => other.id !== player.id)
-                .reduce((sum, other) => sum + unoHandPoints(other.hand), 0);
-            player.score = uno.winnerPoints;
+            uno.winnerPoints = 0;
+            player.score = 0;
             room.gameState = 'GAME_OVER';
         } else if (player.hand.length === 1) {
             clearUnoTimer(room);
