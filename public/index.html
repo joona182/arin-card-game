@@ -421,11 +421,15 @@
         .uno-card-face.green { --uno-bg: #26a96c; }
         .uno-card-face.wild { --uno-bg: conic-gradient(#ed3e4a 0 25%,#3488e8 0 50%,#f5d040 0 75%,#26a96c 0); }
         .uno-card-face::before { content: ''; position: absolute; z-index: -1; left: 4%; top: 17%; width: 92%; height: 66%; border: 2px solid #ffffffed; border-radius: 50%; background: #fffdf4; transform: rotate(-34deg); }
+        .uno-card-cat { position: absolute; z-index: 0; left: 50%; top: 50%; width: 88%; height: 72%; object-fit: contain; object-position: center; transform: translate(-50%, -50%); filter: drop-shadow(0 1px 1px #26323844); pointer-events: none; }
         .uno-card-corner { position: absolute; z-index: 1; top: 4px; left: 5px; font-size: .83rem; line-height: 1; font-weight: 1000; }
         .uno-card-corner.bottom { top: auto; left: auto; right: 5px; bottom: 4px; transform: rotate(180deg); }
-        .uno-card-symbol { position: absolute; z-index: 1; inset: 0; display: grid; place-items: center; color: #263238; font-size: 2.1rem; line-height: 1; font-weight: 1000; text-shadow: 0 1px #fff; transform: rotate(-8deg); }
+        .uno-card-symbol { position: absolute; z-index: 2; left: 50%; bottom: 13%; min-width: 27px; padding: 2px 7px; display: grid; place-items: center; border: 2px solid #fff; border-radius: 999px; background: #fffdf4ed; color: #263238; font-size: 1.25rem; line-height: 1; font-weight: 1000; text-shadow: 0 1px #fff; box-shadow: 0 1px 3px #26323855; transform: translateX(-50%) rotate(-8deg); }
         .uno-card-face.yellow .uno-card-symbol { color: #654500; }
-        .uno-card-face.wild .uno-card-symbol { font-size: 1.16rem; }
+        .uno-card-face.wild .uno-card-symbol { font-size: 1rem; }
+        .uno-result-card .uno-card-cat { height: 70%; }
+        .uno-result-card .uno-card-symbol { min-width: 20px; padding: 1px 4px; border-width: 1px; font-size: .78rem; }
+        .uno-result-card .uno-card-face.wild .uno-card-symbol { font-size: .58rem; }
         .uno-current-color { min-height: 28px; padding: 5px 11px; border: 1px solid #ffffff55; border-radius: 999px; background: #064f4b66; color: white; font-size: .75rem; font-weight: 900; text-shadow: 0 1px 2px #064f4b; }
         .uno-direction { display: flex; align-items: center; gap: 5px; color: #fff; font-size: .75rem; font-weight: 1000; text-shadow: 0 1px 4px #164f4c; }
         .uno-direction-arrow { display: inline-grid; place-items: center; width: 27px; height: 27px; border: 2px solid #ffffffc9; border-radius: 50%; background: #ffffff22; font-size: 1.15rem; line-height: 1; transform: rotate(0deg); transition: transform .82s cubic-bezier(.18,.8,.25,1); }
@@ -736,6 +740,7 @@
 
     const UNO_COLOR_LABELS = { red: '빨강', blue: '파랑', yellow: '노랑', green: '초록' };
     const UNO_COLOR_HEX = { red: '#ed3e4a', blue: '#3488e8', yellow: '#f5d040', green: '#26a96c' };
+    const UNO_REPRESENTATIVE_CATS = { red: 'cat_11.png', blue: 'cat_20.png', yellow: 'cat_06.png', green: 'cat_17.png', wild: 'cat_36.png' };
 
     function updateLobbyReadyButton() {
         if (!latestLobbyPlayer) return;
@@ -1275,8 +1280,10 @@
         const colorClass = card.color || 'wild';
         const label = unoCardLabel(card);
         const corner = card.kind === 'number' ? String(card.value) : label;
+        const catImage = UNO_REPRESENTATIVE_CATS[card.color] || UNO_REPRESENTATIVE_CATS.wild;
         return `<div class="uno-card-face ${colorClass}" aria-label="${UNO_COLOR_LABELS[card.color] || '무지개'} ${escapeHtml(corner)} 카드">
             <span class="uno-card-corner">${escapeHtml(corner)}</span>
+            <img class="uno-card-cat" src="./images/dobble/${catImage}" alt="" draggable="false">
             <span class="uno-card-symbol">${escapeHtml(label)}</span>
             <span class="uno-card-corner bottom">${escapeHtml(corner)}</span>
         </div>`;
