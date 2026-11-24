@@ -483,6 +483,62 @@
             .uno-hand-row.dense .uno-hand-card { flex-basis: 54px; width: 54px; height: 84px; margin-left: -17px; }
             .uno-hand-row.very-dense .uno-hand-card { flex-basis: 50px; width: 50px; height: 78px; margin-left: -20px; }
         }
+        #halli-screen { width: 100%; max-width: 480px; display: none; flex-direction: column; gap: 9px; margin: 4px auto 70px; }
+        .halli-topbar, .halli-info, .halli-controls { background: #fff; border-radius: 14px; padding: 10px 12px; box-shadow: 0 2px 7px #0001; }
+        .halli-topbar { display:flex; justify-content:space-between; align-items:center; font-weight:1000; }
+        .halli-room-label { display:block; margin-top:2px; color:#68757d; font-size:.72rem; }
+        .halli-arena { position:relative; height:min(66vh,610px); min-height:470px; overflow:hidden; border:8px solid #8d5524; border-radius:34px; background:radial-gradient(circle,#38b2ac 0%,#2c7a7b 100%); box-shadow:inset 0 0 25px #0005,0 6px 15px #0002; }
+        .halli-scoreboard { display:flex; justify-content:center; flex-wrap:wrap; gap:5px; }
+        .halli-score-chip { padding:5px 8px; border-radius:99px; background:#fff; color:#344; font-size:.69rem; font-weight:900; }
+        .halli-score-chip.me { outline:2px solid #ffd166; }
+        .halli-seat { position:absolute; z-index:2; width:min(43%,170px); min-height:79px; padding:5px; display:flex; flex-direction:column; align-items:center; gap:3px; border:2px solid #ffffffaa; border-radius:13px; background:#ffffffdf; box-shadow:0 2px 8px #063d3966; }
+        .halli-seat.me { background:#fff8df; border-color:#ffd166; }
+        .halli-seat.p0 { left:50%; bottom:10px; transform:translateX(-50%); }
+        .halli-seat.p1 { left:5%; top:10px; }
+        .halli-seat.p2 { left:5px; top:26%; }
+        .halli-seat.p3 { right:5px; top:26%; }
+        .halli-seat.p4 { right:5px; top:8px; }
+        .halli-seat-name { max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:.72rem; font-weight:1000; }
+        .halli-pile-count { color:#6c757d; font-size:.62rem; font-weight:800; }
+        .halli-deck-stack { position:relative; width:34px; height:19px; margin:0 auto; }
+        button.halli-deck-stack { padding:0; border:0; background:transparent; cursor:pointer; }
+        button.halli-deck-stack:disabled { background:transparent; cursor:default; }
+        button.halli-deck-stack:active { transform:translateY(2px) scale(.95); }
+        .halli-deck-stack i { position:absolute; left:5px; top:0; width:16px; height:19px; border:1px solid white; border-radius:3px; background:repeating-linear-gradient(45deg,#ff8b42 0 3px,#ffb44c 3px 6px); box-shadow:0 1px 2px #0003; }
+        .halli-deck-stack i:nth-child(2) { left:10px; top:2px; }
+        .halli-deck-stack i:nth-child(3) { left:15px; top:4px; }
+        .halli-faceups { width:100%; max-height:49px; display:flex; justify-content:center; overflow:hidden; }
+        .halli-card-mini { position:relative; flex:0 0 32px; width:32px; height:43px; margin-left:-6px; display:grid; place-items:center; border:2px solid white; border-radius:7px; background:#fff8e7; color:#333; box-shadow:0 2px 4px #0003; }
+        .halli-card-mini:first-child { margin-left:0; }
+        .halli-card-symbol { font-size:1.35rem; line-height:1; }
+        .halli-card-count { position:absolute; right:-3px; bottom:-3px; min-width:15px; height:15px; display:grid; place-items:center; border-radius:50%; background:#ffd166; color:#553900; font-size:.58rem; font-weight:1000; }
+        .halli-center { position:absolute; z-index:1; left:50%; top:50%; transform:translate(-50%,-50%); width:min(44%,188px); display:flex; flex-direction:column; align-items:center; gap:5px; }
+        .halli-fruit-totals { display:flex; flex-wrap:wrap; justify-content:center; gap:4px; }
+        .halli-fruit-total { padding:3px 6px; border-radius:99px; background:#ffffffd9; color:#304b49; font-size:.67rem; font-weight:1000; }
+        .halli-fruit-total.exact { background:#ffd166; color:#6b3800; box-shadow:0 0 0 3px #fff7; animation:halliPulse .35s ease-in-out infinite alternate; }
+        @keyframes halliPulse { to { transform:scale(1.1); } }
+        .halli-bell { width:clamp(96px,29vw,130px); height:clamp(96px,29vw,130px); margin:4px 0; padding:0; border:6px solid #fff2c5; border-radius:50%; background:radial-gradient(circle at 35% 25%,#ffe680,#f0a91e 68%,#c8780b); color:#713800; font-size:3.2rem; line-height:1; text-shadow:0 2px 1px #fff8; box-shadow:0 7px 0 #9b560d,0 10px 18px #073f3b66; touch-action:manipulation; transition:transform .08s,filter .12s; }
+        .halli-bell:active { transform:translateY(5px) scale(.97); box-shadow:0 2px 0 #9b560d,0 5px 12px #073f3b66; }
+        .halli-bell.ready { animation:halliBellReady .45s ease-in-out infinite alternate; }
+        @keyframes halliBellReady { to { filter:drop-shadow(0 0 10px #fff16a); transform:scale(1.06); } }
+        .halli-bell-caption { min-height:32px; color:white; font-size:.77rem; text-align:center; font-weight:1000; text-shadow:0 1px 4px #124a47; }
+        .halli-penalty-pile { min-height:25px; display:flex; justify-content:center; align-items:center; gap:2px; }
+        .halli-penalty-pile .halli-card-mini { flex-basis:22px; width:22px; height:28px; margin-left:-5px; border-width:1px; border-radius:5px; }
+        .halli-penalty-pile .halli-card-symbol { font-size:.9rem; }
+        .halli-penalty-pile .halli-card-count { min-width:11px; height:11px; font-size:.48rem; }
+        .halli-penalty-more { padding:2px 5px; border-radius:99px; background:#fff; color:#793d00; font-size:.62rem; font-weight:1000; }
+        .halli-controls { display:flex; gap:8px; align-items:center; }
+        .halli-action { flex:1; min-height:48px; margin:0; border:0; border-radius:12px; font-size:.91rem; font-weight:1000; touch-action:manipulation; }
+        .halli-flip { background:#ff7f50; }
+        .halli-shuffle { background:#4c6ef5; }
+        .halli-action:disabled { opacity:.5; }
+        .halli-info { min-height:40px; color:#176e61; text-align:center; font-size:.84rem; font-weight:1000; }
+        .halli-toast { position:absolute; z-index:5; left:50%; top:50%; max-width:90%; padding:10px 14px; border:3px solid #ffd166; border-radius:16px; background:#fffdf2; color:#a33c19; box-shadow:0 5px 18px #0005; font-size:clamp(1rem,4.7vw,1.35rem); font-weight:1000; text-align:center; pointer-events:none; opacity:0; transform:translate(-50%,-50%) scale(.7); }
+        .halli-toast.show { animation:halliToast .2s ease-out both; }
+        @keyframes halliToast { to { opacity:1; transform:translate(-50%,-50%) scale(1); } }
+        .halli-seat.shuffling .halli-deck-stack { animation:halliShuffle .65s ease-in-out; }
+        @keyframes halliShuffle { 25% { transform:translateX(-10px) rotate(-5deg); } 50% { transform:translateX(10px) rotate(5deg); } 75% { transform:translateX(-5px) rotate(-3deg); } }
+        @media(max-width:390px) { .halli-arena{min-height:440px;border-width:7px}.halli-seat{width:42%;}.halli-center{width:48%;}.halli-card-mini{flex-basis:28px;width:28px;height:39px;margin-left:-7px}.halli-card-symbol{font-size:1.2rem} }
         .hidden { display: none !important; }
     </style>
 </head>
@@ -498,6 +554,7 @@
             <option value="EYE">😼 냥이 눈치게임</option>
             <option value="DOBBLE">🐱 냥이 도블</option>
             <option value="UNO">🃏 냥이 UNO</option>
+            <option value="HALLI">🔔 냥이 할리갈리</option>
         </select>
         
         <button onclick="createRoom()" style="margin-top: 12px; background: #ff7f50;">🏠 선택한 게임 방 만들기</button>
@@ -546,6 +603,14 @@
             • 차례는 30초예요. 시간이 끝나면 카드 한 장을 받고 다음 친구 차례로 넘어가요.<br>
             • 숫자 카드는 숫자만큼, 특수 카드는 모두 10점이에요.<br>
             • 먼저 끝낸 친구가 다른 친구들의 남은 카드 점수를 얻어요!
+        </div>
+        <div class="rule-guide-box hidden" id="halli-rule-guide">
+            <b>📜 냥이 할리갈리</b><br>
+            • 차례 없이 각자 자기 덱을 눌러 카드를 한 장씩 뒤집어요.<br>
+            • 같은 과일이 모두 합쳐 <b>5개</b>가 보이면 종을 눌러요!<br>
+            • 먼저 맞게 누른 친구가 펼쳐진 카드를 가져가 자기 덱 아래에 넣어요.<br>
+            • 틀리게 누르면 내 덱 카드 한 장을 종 밑에 버려요.<br>
+            • 내 덱은 섞기 버튼으로 다시 섞을 수 있어요.
         </div>
 
         <div id="dobble-assets-status" class="lobby-waiting-box dobble-assets-status hidden" role="status" aria-live="polite">
@@ -670,6 +735,28 @@
             </div>
         </section>
     </div>
+    <div id="halli-screen">
+        <div class="halli-topbar">
+            <div>🔔 냥이 할리갈리<span id="halli-room-label" class="halli-room-label">방 0000 · 2명</span></div>
+            <button id="halli-reset-btn" class="uno-reset" type="button" onclick="confirmReset()">🔄 새로하기</button>
+        </div>
+        <div id="halli-scoreboard" class="halli-scoreboard"></div>
+        <section class="halli-arena" aria-label="할리갈리 테이블">
+            <div id="halli-seats"></div>
+            <div class="halli-center">
+                <div id="halli-fruit-totals" class="halli-fruit-totals"></div>
+                <button id="halli-bell" class="halli-bell" type="button" aria-label="종 치기">🔔</button>
+                <div id="halli-penalty-pile" class="halli-penalty-pile" aria-label="종 밑에 놓인 벌칙 카드"></div>
+                <div id="halli-bell-caption" class="halli-bell-caption">과일을 세어봐!</div>
+            </div>
+            <div id="halli-toast" class="halli-toast" role="status" aria-live="polite"></div>
+        </section>
+        <div id="halli-info" class="halli-info" role="status" aria-live="polite">내 덱을 눌러 카드를 뒤집어!</div>
+        <div class="halli-controls">
+            <button id="halli-flip" class="halli-action halli-flip" type="button">🃏 카드 뒤집기</button>
+            <button id="halli-shuffle" class="halli-action halli-shuffle" type="button">🔀 내 덱 섞기</button>
+        </div>
+    </div>
     <div id="uno-color-picker" class="uno-color-picker hidden" role="dialog" aria-modal="true" aria-labelledby="uno-color-title">
         <div class="uno-color-dialog">
             <strong id="uno-color-title">다음에 낼 색을 골라줘!</strong>
@@ -730,6 +817,15 @@
     let unoActionNoticeText = '';
     let unoActionNoticeUntil = 0;
     let unoActionNoticeTimer = null;
+    const HALLI_FRUITS = ['🍓', '🍋', '🍇', '🍌'];
+    let halliServerOffsetMs = 0;
+    let halliPendingUi = null;
+    let halliRevealTimer = null;
+    let halliLatestState = null;
+    let halliToastTimer = null;
+    let halliLastActionId = 0;
+    let halliLastShuffleId = null;
+    let halliLocalRevealStart = null;
 
     const UNO_COLOR_LABELS = { red: '빨강', blue: '파랑', yellow: '노랑', green: '초록' };
     const UNO_COLOR_HEX = { red: '#ed3e4a', blue: '#3488e8', yellow: '#f5d040', green: '#26a96c' };
@@ -1601,6 +1697,117 @@
         });
     });
 
+    function halliCardMarkup(card) {
+        return `<div class="halli-card-mini" aria-label="${card.count} ${card.fruit}"><span class="halli-card-symbol">${card.fruit}</span><span class="halli-card-count">${card.count}</span></div>`;
+    }
+
+    function showHalliToast(text) {
+        const toast = document.getElementById('halli-toast');
+        toast.textContent = text;
+        toast.classList.remove('show');
+        void toast.offsetWidth;
+        toast.classList.add('show');
+        if (halliToastTimer) clearTimeout(halliToastTimer);
+        halliToastTimer = setTimeout(() => toast.classList.remove('show'), 1550);
+    }
+
+    function renderHalli(state, me, isHost) {
+        halliLatestState = { state, me, isHost };
+        const halli = state.halli;
+        const newShuffleEvent = halli?.shuffleEvent?.id && halli.shuffleEvent.id !== halliLastShuffleId ? halli.shuffleEvent : null;
+        const playing = ['HALI_PLAYING', 'HALI_REVEAL', 'HALI_BELL_RACE'].includes(state.gameState);
+        const pending = halli?.pendingReveal;
+        if (pending && (!halliPendingUi || halliPendingUi.id !== pending.id)) {
+            if (halliRevealTimer) clearTimeout(halliRevealTimer);
+            const delay = Math.max(0, pending.revealAt - (Date.now() + halliServerOffsetMs));
+            halliPendingUi = { id: pending.id, playerId: pending.playerId, card: pending.card, revealed: false };
+            halliLocalRevealStart = performance.now() + delay;
+            halliRevealTimer = setTimeout(() => {
+                if (!halliPendingUi || halliPendingUi.id !== pending.id) return;
+                halliPendingUi.revealed = true;
+                halliLocalRevealStart = performance.now();
+                if (halliLatestState) renderHalli(...Object.values(halliLatestState));
+            }, delay);
+        }
+        if (!pending && halliPendingUi && state.gameState !== 'HALI_REVEAL') {
+            if (halliRevealTimer) clearTimeout(halliRevealTimer);
+            halliRevealTimer = null;
+            halliPendingUi = null;
+        }
+
+        document.getElementById('halli-room-label').textContent = `방 ${state.roomCode} · ${Object.values(state.players).filter(p => p.color !== null).length}명`;
+        document.getElementById('halli-reset-btn').classList.toggle('hidden', !isHost);
+        const players = Object.values(state.players).filter(p => p.color !== null);
+        const ordered = [me, ...players.filter(p => p.id !== me?.id)].filter(Boolean);
+        const positions = ['p0', 'p1', 'p2', 'p3', 'p4'];
+        document.getElementById('halli-scoreboard').innerHTML = ordered.map((p) => {
+            const total = (p.halliDeckCount || 0) + (p.halliFaceUp || []).length;
+            return `<span class="halli-score-chip ${p.id === me?.id ? 'me' : ''}">${p.id === me?.id ? '🙋' : '🐱'} ${escapeHtml(p.name)} · ${total}장</span>`;
+        }).join('');
+
+        document.getElementById('halli-seats').innerHTML = ordered.map((p, index) => {
+            let visible = [...(p.halliFaceUp || [])];
+            if (halliPendingUi?.revealed && halliPendingUi.playerId === p.id) visible.push(halliPendingUi.card);
+            const cards = visible.slice(-7).map(halliCardMarkup).join('');
+            return `<div class="halli-seat ${positions[index]} ${p.id === me?.id ? 'me' : ''} ${newShuffleEvent?.playerId === p.id ? 'shuffling' : ''}" style="border-color:${COLOR_HEX[p.color] || '#fff'}">
+                <div class="halli-seat-name">${p.id === me?.id ? '🙋 ' : '🐱 '}${escapeHtml(p.name)}${p.id === me?.id ? ' (나)' : ''}</div>
+                <div class="halli-faceups">${cards || '<span style="font-size:.58rem;color:#777">공개 카드 없음</span>'}</div>
+                ${p.id === me?.id
+                    ? `<button class="halli-deck-stack" type="button" aria-label="내 덱에서 카드 뒤집기" onclick="flipHalli()" ${!(p.halliDeckCount > 0) || state.gameState !== 'HALI_PLAYING' ? 'disabled' : ''}><i></i><i></i><i></i></button>`
+                    : '<div class="halli-deck-stack" aria-hidden="true"><i></i><i></i><i></i></div>'}
+                <div class="halli-pile-count">덱 ${p.halliDeckCount || 0}장 · 펼친 카드 ${visible.length}장</div>
+            </div>`;
+        }).join('');
+
+        const totals = { ...(halli?.fruitTotals || {}) };
+        if (pending && halliPendingUi?.revealed && halliPendingUi.id === pending.id) {
+            totals[halliPendingUi.card.fruit] = (totals[halliPendingUi.card.fruit] || 0) + halliPendingUi.card.count;
+        }
+        const hasFive = Object.values(totals).some((n) => n === 5);
+        document.getElementById('halli-fruit-totals').innerHTML = HALLI_FRUITS.map((fruit) =>
+            `<span class="halli-fruit-total ${totals[fruit] === 5 ? 'exact' : ''}">${fruit} ${totals[fruit] || 0}</span>`
+        ).join('');
+        const penaltyCards = halli?.penaltyPile || [];
+        document.getElementById('halli-penalty-pile').innerHTML = penaltyCards.slice(-4).map(halliCardMarkup).join('') +
+            (penaltyCards.length > 4 ? `<span class="halli-penalty-more">+${penaltyCards.length - 4}</span>` : '');
+        const bell = document.getElementById('halli-bell');
+        bell.classList.toggle('ready', hasFive);
+        bell.disabled = !playing || (state.gameState === 'HALI_REVEAL' && !halliPendingUi?.revealed);
+        document.getElementById('halli-bell-caption').textContent = hasFive ? '5개야! 종을 쳐!' : `종 밑 카드 ${halli?.bellPenaltyCount || 0}장`;
+        const flip = document.getElementById('halli-flip');
+        flip.disabled = !playing || state.gameState !== 'HALI_PLAYING' || !!pending || !(me?.halliDeckCount > 0);
+        document.getElementById('halli-shuffle').disabled = !playing || state.gameState !== 'HALI_PLAYING' || !!pending || !(me?.halliDeckCount > 1);
+        document.getElementById('halli-info').textContent = state.gameState === 'HALI_REVEAL'
+            ? `${state.players[pending?.playerId]?.name || '친구'} 카드 공개 준비!`
+            : hasFive ? '같은 과일이 5개야! 먼저 종을 눌러!' : `각자 자기 덱을 눌러 계속 뒤집어!`;
+
+        const action = halli?.lastAction;
+        if (action && action.id !== halliLastActionId) {
+            halliLastActionId = action.id;
+            const actor = state.players[action.playerId]?.name || '친구';
+            if (action.type === 'correct-bell') showHalliToast(`🔔 ${actor}가 가져갔어!`);
+            else if (action.type === 'wrong-bell') showHalliToast(action.card ? `앗! ${actor}가 틀렸어! 카드 1장이 종 밑으로!` : `앗! ${actor}가 틀렸어!`);
+            else if (action.type === 'missed-bell') showHalliToast('앗, 종을 놓쳤어! 계속 뒤집어!');
+        }
+        if (newShuffleEvent) {
+            halliLastShuffleId = newShuffleEvent.id;
+            const shuffledName = state.players[newShuffleEvent.playerId]?.name || '친구';
+            showHalliToast(newShuffleEvent.playerId === me?.id ? '🔀 내 덱을 섞었어!' : `🔀 ${shuffledName}가 덱을 섞었어!`);
+            setTimeout(() => document.querySelectorAll('.halli-seat.shuffling').forEach((node) => node.classList.remove('shuffling')), 700);
+        }
+    }
+
+    function flipHalli() { socket.emit('halli-flip'); }
+    document.getElementById('halli-flip').addEventListener('click', flipHalli);
+    document.getElementById('halli-shuffle').addEventListener('click', () => socket.emit('halli-shuffle'));
+    document.getElementById('halli-bell').addEventListener('click', () => {
+        const latest = halliLatestState?.state;
+        const halli = latest?.halli;
+        const start = halliLocalRevealStart;
+        const reactionMs = Number.isFinite(start) ? Math.max(0, performance.now() - start) : 10000;
+        socket.emit('halli-bell', { bellRaceId: halli?.bellRaceId, reactionMs });
+    });
+
     socket.on('update-room', (state) => {
         const myId = socket.id;
         const me = state.players[myId];
@@ -1608,6 +1815,7 @@
         const firstId = Object.keys(state.players)[0];
         const isHost = (state.hostId || firstId) === myId;
         activeRoomCode = state.roomCode;
+        if (Number.isFinite(state.serverTime)) halliServerOffsetMs = state.serverTime - Date.now();
 
         if (state.gameState === 'LOBBY') {
             if (!me) return;
@@ -1616,6 +1824,13 @@
             pendingUnoCardId = null;
             document.getElementById('uno-color-picker').classList.add('hidden');
             document.getElementById('uno-screen').style.display = 'none';
+            document.getElementById('halli-screen').style.display = 'none';
+            halliPendingUi = null;
+            halliLocalRevealStart = null;
+            if (halliRevealTimer) clearTimeout(halliRevealTimer);
+            halliRevealTimer = null;
+            halliLastActionId = 0;
+            halliLastShuffleId = null;
             lastDobbleAnimatedId = null;
             lastDobbleCardVersion = null;
             lastUnoActionId = 0;
@@ -1641,13 +1856,16 @@
             document.getElementById('display-room-code').innerText = state.roomCode;
             const isDobbleRoom = state.gameMode === 'DOBBLE';
             const isUnoRoom = state.gameMode === 'UNO';
+            const isHalliRoom = state.gameMode === 'HALLI';
             latestLobbyPlayer = me;
             latestLobbyGameMode = state.gameMode || 'EYE';
-            document.getElementById('display-game-mode').innerText = isDobbleRoom ? '🐱 냥이 도블' : isUnoRoom ? '🃏 냥이 UNO' : '😼 냥이 눈치게임';
-            document.getElementById('eye-rule-guide').classList.toggle('hidden', isDobbleRoom || isUnoRoom);
+            document.getElementById('display-game-mode').innerText = isDobbleRoom ? '🐱 냥이 도블' : isUnoRoom ? '🃏 냥이 UNO' : isHalliRoom ? '🔔 냥이 할리갈리' : '😼 냥이 눈치게임';
+            document.getElementById('eye-rule-guide').classList.toggle('hidden', isDobbleRoom || isUnoRoom || isHalliRoom);
             document.getElementById('dobble-rule-guide').classList.toggle('hidden', !isDobbleRoom);
             document.getElementById('uno-rule-guide').classList.toggle('hidden', !isUnoRoom);
+            document.getElementById('halli-rule-guide').classList.toggle('hidden', !isHalliRoom);
             document.getElementById('dobble-screen').style.display = 'none';
+            document.getElementById('halli-screen').style.display = 'none';
             document.getElementById('dobble-assets-status').classList.toggle('hidden', !isDobbleRoom);
             if (isDobbleRoom) preloadDobbleAssets();
 
@@ -1697,11 +1915,22 @@
                 document.getElementById('start-btn').classList.add('hidden');
             }
         }
+        else if (state.gameMode === 'HALLI' && state.gameState.startsWith('HALI_')) {
+            document.getElementById('login-screen').classList.add('hidden');
+            document.getElementById('room-screen').classList.add('hidden');
+            document.getElementById('game-screen').style.display = 'none';
+            document.getElementById('dobble-screen').style.display = 'none';
+            document.getElementById('uno-screen').style.display = 'none';
+            document.getElementById('halli-screen').style.display = 'flex';
+            document.getElementById('gameover-screen').classList.add('hidden');
+            renderHalli(state, me, isHost);
+        }
         else if (state.gameState === 'UNO_PLAYING' || state.gameState === 'UNO_DEALING') {
             document.getElementById('login-screen').classList.add('hidden');
             document.getElementById('room-screen').classList.add('hidden');
             document.getElementById('game-screen').style.display = 'none';
             document.getElementById('dobble-screen').style.display = 'none';
+            document.getElementById('halli-screen').style.display = 'none';
             document.getElementById('gameover-screen').classList.add('hidden');
             document.getElementById('uno-screen').style.display = 'flex';
             document.getElementById('uno-color-picker').classList.add('hidden');
@@ -1717,6 +1946,7 @@
             document.getElementById('room-screen').classList.add('hidden');
             document.getElementById('gameover-screen').classList.add('hidden');
             document.getElementById('uno-screen').style.display = 'none';
+            document.getElementById('halli-screen').style.display = 'none';
             document.getElementById('game-screen').style.display = 'flex';
             document.getElementById('dobble-screen').style.display = 'none';
             document.getElementById('ingame-reset-btn').classList.toggle('hidden', !isHost);
@@ -1730,8 +1960,10 @@
             document.getElementById('room-screen').classList.add('hidden');
             document.getElementById('gameover-screen').classList.add('hidden');
             document.getElementById('uno-screen').style.display = 'none';
+            document.getElementById('halli-screen').style.display = 'none';
             document.getElementById('game-screen').style.display = 'flex';
             document.getElementById('dobble-screen').style.display = 'none';
+            document.getElementById('halli-screen').style.display = 'none';
             document.getElementById('game-screen').classList.remove('dobble-mode');
             document.getElementById('table-arena').classList.remove('dobble-arena');
             document.getElementById('hand-box').style.display = '';
@@ -1900,9 +2132,12 @@
             document.getElementById('game-screen').classList.remove('dobble-mode');
             document.getElementById('table-arena').classList.remove('dobble-arena');
             document.getElementById('dobble-screen').style.display = 'none';
+            document.getElementById('halli-screen').style.display = 'none';
             document.getElementById('gameover-screen').classList.remove('hidden');
             document.getElementById('final-title').innerText = state.gameMode === 'DOBBLE'
                 ? '🎉 냥이 도블 종료! 모은 카드 순위'
+                : state.gameMode === 'HALLI'
+                    ? `🔔 냥이 할리갈리! ${state.players[state.halli?.winnerId]?.name || '친구'}가 가장 많은 카드를 모았어!`
                 : state.gameMode === 'UNO'
                     ? `🏆 냥이 UNO! ${state.players[state.uno?.winnerId]?.name || '친구'}가 이겼어!`
                     : '🎉 게임 종료! 최종 순위';
