@@ -389,6 +389,7 @@
         .uno-center { position: absolute; top: 51%; left: 50%; transform: translate(-50%,-50%); display: flex; flex-direction: column; align-items: center; gap: 11px; }
         .uno-piles { display: flex; align-items: center; justify-content: center; gap: 18px; }
         .uno-pile { display: flex; flex-direction: column; align-items: center; gap: 5px; color: #fff; font-size: .72rem; font-weight: 900; text-shadow: 0 1px 4px #164f4c; }
+        .uno-pile .uno-pass-button { min-height: 33px; padding: 6px 9px; font-size: .68rem; white-space: nowrap; text-shadow: none; }
         .uno-draw-button { width: 65px; height: 94px; margin: 0; padding: 0; border: 0; border-radius: 12px; background: transparent; cursor: pointer; filter: drop-shadow(0 5px 5px #073f3b77); transition: transform .2s ease, filter .2s ease; }
         .uno-draw-button.ready { filter: drop-shadow(0 0 7px #ffe066) drop-shadow(0 5px 5px #073f3b77); animation: unoDeckHint 1s ease-in-out infinite alternate; }
         .uno-draw-button:disabled { opacity: .72; cursor: default; }
@@ -414,6 +415,9 @@
         .uno-direction-arrow { display: inline-grid; place-items: center; width: 27px; height: 27px; border: 2px solid #ffffffc9; border-radius: 50%; background: #ffffff22; font-size: 1.15rem; line-height: 1; transform: rotate(0deg); transition: transform .82s cubic-bezier(.18,.8,.25,1); }
         .uno-direction-arrow.spinning { animation: unoArrowPulse .82s ease-out; }
         @keyframes unoArrowPulse { 35% { scale: 1.38; filter: drop-shadow(0 0 6px #fff); } 100% { scale: 1; filter: none; } }
+        .uno-table-toast { position: absolute; top: 50%; left: 50%; z-index: 20; max-width: calc(100% - 28px); padding: 12px 22px; border: 3px solid #ffd166; border-radius: 999px; background: #fffdf3; color: #d92d3a; box-shadow: 0 6px 24px #073f3b88; font-size: clamp(1.2rem, 6vw, 1.8rem); font-weight: 1000; text-align: center; white-space: nowrap; pointer-events: none; opacity: 0; transform: translate(-50%, -50%) scale(.6); }
+        .uno-table-toast.show { animation: unoToastPop 2.3s cubic-bezier(.2,.8,.25,1) both; }
+        @keyframes unoToastPop { 0% { opacity: 0; transform: translate(-50%, -50%) scale(.55) rotate(-6deg); } 12% { opacity: 1; transform: translate(-50%, -50%) scale(1.12) rotate(2deg); } 20%, 76% { opacity: 1; transform: translate(-50%, -50%) scale(1) rotate(0); } 100% { opacity: 0; transform: translate(-50%, -50%) scale(.82) rotate(4deg); } }
         .uno-my-seat { position: absolute; bottom: 11px; left: 50%; transform: translateX(-50%); padding: 5px 11px 5px 5px; display: flex; align-items: center; gap: 7px; border: 2px solid #adb5bd; border-radius: 24px; background: #fffdf5; box-shadow: 0 3px 9px #073f3b66; white-space: nowrap; transition: border .15s ease, box-shadow .15s ease, background .15s ease; }
         .uno-my-seat.active { border: 4px solid #fa3e4e; background: #fff4f4; box-shadow: 0 0 0 5px #fa3e4e55, 0 3px 15px #8a102a88; }
         .uno-my-seat.active .uno-seat-badge { color: #c92a2a; }
@@ -424,13 +428,17 @@
         .uno-hand-panel { padding: 8px 8px 9px; }
         .uno-hand-heading { margin: 0 2px 6px; display: flex; justify-content: space-between; align-items: center; font-size: .82rem; font-weight: 900; }
         .uno-hand-count { color: #e8590c; }
-        .uno-hand-row { min-height: 116px; display: flex; align-items: center; justify-content: flex-start; gap: 0; overflow-x: auto; overflow-y: hidden; padding: 5px 4px 9px; }
-        .uno-hand-card { flex: 0 0 64px; width: 64px; height: 98px; margin-left: -8px; padding: 0; border: 0; border-radius: 15px; background: transparent; cursor: pointer; transition: transform .18s ease, filter .18s ease; }
+        .uno-hand-row { min-height: 116px; display: flex; align-items: center; justify-content: flex-start; gap: 0; overflow-x: auto; overflow-y: hidden; padding: 5px 4px 9px; scrollbar-width: thin; scrollbar-color: #adb5bd transparent; touch-action: pan-x; }
+        .uno-hand-row::-webkit-scrollbar { height: 5px; }
+        .uno-hand-row::-webkit-scrollbar-thumb { background: #adb5bd; border-radius: 8px; }
+        .uno-hand-card { position: relative; flex: 0 0 62px; width: 62px; height: 96px; margin-left: -14px; padding: 0; border: 0; border-radius: 15px; background: transparent; cursor: pointer; transition: transform .18s ease, filter .18s ease; }
         .uno-hand-card:first-child { margin-left: 0; }
-        .uno-hand-card.playable { filter: drop-shadow(0 0 5px #ffd166); transform: translateY(-5px); }
+        .uno-hand-card.playable { z-index: 100; filter: drop-shadow(0 0 5px #ffd166); transform: translateY(-5px); }
         .uno-hand-card.playable:hover { transform: translateY(-11px) scale(1.03); }
         .uno-hand-card:not(.playable) { opacity: .56; }
         .uno-hand-card .uno-card-face { width: 100%; height: 100%; }
+        .uno-hand-row.dense .uno-hand-card { flex-basis: 56px; width: 56px; height: 88px; margin-left: -18px; }
+        .uno-hand-row.very-dense .uno-hand-card { flex-basis: 52px; width: 52px; height: 82px; margin-left: -22px; }
         .uno-actions { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
         .uno-action-button { width: auto; min-height: 37px; margin: 0; padding: 7px 12px; border: 0; border-radius: 11px; font-size: .78rem; font-weight: 900; }
         .uno-call-button { background: #ed3e4a; color: white; animation: unoPulse .6s ease-in-out infinite alternate; }
@@ -457,8 +465,10 @@
             .uno-discard-zone { width: 70px; height: 96px; }
             .uno-discard-zone .uno-card-face { width: 58px; height: 84px; border-width: 3px; border-radius: 11px; }
             .uno-piles { gap: 9px; }
-            .uno-hand-card { flex-basis: 59px; width: 59px; height: 92px; margin-left: -10px; }
+            .uno-hand-card { flex-basis: 58px; width: 58px; height: 90px; margin-left: -13px; }
             .uno-hand-row { min-height: 110px; }
+            .uno-hand-row.dense .uno-hand-card { flex-basis: 54px; width: 54px; height: 84px; margin-left: -17px; }
+            .uno-hand-row.very-dense .uno-hand-card { flex-basis: 50px; width: 50px; height: 78px; margin-left: -20px; }
         }
         .hidden { display: none !important; }
     </style>
@@ -615,6 +625,7 @@
                             <span class="uno-card-back"><span>UNO</span></span>
                         </button>
                         <span id="uno-draw-count">덱 0장</span>
+                        <button id="uno-pass-btn" class="uno-action-button uno-pass-button hidden" type="button">차례 넘기기</button>
                     </div>
                     <div class="uno-pile">
                         <div class="uno-discard-zone" id="uno-discard-zone"></div>
@@ -627,6 +638,7 @@
                     <span id="uno-direction-label">시계 방향</span>
                 </div>
             </div>
+            <div id="uno-table-toast" class="uno-table-toast" role="status" aria-live="polite"></div>
             <div id="uno-my-seat" class="uno-my-seat">
                 <span class="uno-seat-avatar">🙋</span>
                 <span id="uno-my-name" class="uno-my-seat-name">나</span>
@@ -642,9 +654,6 @@
             <div id="uno-hand-row" class="uno-hand-row"></div>
             <div class="uno-actions">
                 <span id="uno-hand-hint" class="helper-text">덱을 눌러 카드 한 장을 얻을 수 있어!</span>
-                <div style="display:flex;gap:6px">
-                    <button id="uno-pass-btn" class="uno-action-button uno-pass-button hidden" type="button">차례 넘기기</button>
-                </div>
             </div>
         </section>
     </div>
@@ -700,6 +709,8 @@
     let latestLobbyGameMode = 'EYE';
     let unoClockTimer = null;
     let lastUnoActionId = 0;
+    let lastUnoToastActionId = null;
+    let unoTableToastTimer = null;
     let pendingUnoCardId = null;
     let lastUnoRoomCode = '';
     let lastUnoDealId = null;
@@ -1227,6 +1238,19 @@
         return String(card.value);
     }
 
+    function sortUnoHand(hand) {
+        const colorOrder = { red: 0, blue: 1, yellow: 2, green: 3 };
+        const kindOrder = { number: 0, skip: 1, reverse: 2, draw2: 3, wild: 4, wild4: 5 };
+        return [...hand].sort((a, b) => {
+            const colorDifference = (colorOrder[a.color] ?? 4) - (colorOrder[b.color] ?? 4);
+            if (colorDifference) return colorDifference;
+            const kindDifference = (kindOrder[a.kind] ?? 9) - (kindOrder[b.kind] ?? 9);
+            if (kindDifference) return kindDifference;
+            if (a.kind === 'number' && b.kind === 'number') return a.value - b.value || a.id - b.id;
+            return a.id - b.id;
+        });
+    }
+
     function unoCardFaceMarkup(card) {
         const colorClass = card.color || 'wild';
         const label = unoCardLabel(card);
@@ -1310,6 +1334,20 @@
         }
     }
 
+    function showUnoTableToast(text) {
+        const toast = document.getElementById('uno-table-toast');
+        if (!toast) return;
+        toast.textContent = text;
+        toast.classList.remove('show');
+        void toast.offsetWidth;
+        toast.classList.add('show');
+        if (unoTableToastTimer) clearTimeout(unoTableToastTimer);
+        unoTableToastTimer = setTimeout(() => {
+            toast.classList.remove('show');
+            unoTableToastTimer = null;
+        }, 2400);
+    }
+
     function unoActionMessage(action, state) {
         if (!action) return '';
         const actor = state.players[action.playerId]?.name || '친구';
@@ -1355,6 +1393,11 @@
         const isDealing = state.gameState === 'UNO_DEALING';
         const priorActionId = lastUnoActionId;
         const action = uno.lastAction;
+        if (action?.type === 'uno-call' && action.id !== lastUnoToastActionId) {
+            lastUnoToastActionId = action.id;
+            const callerName = state.players[action.playerId]?.name || '친구';
+            showUnoTableToast(`📣 ${callerName}가 UNO!`);
+        }
         let startRect = null;
         let effectDrawSourceRect = null;
         if (action && action.id !== priorActionId) {
@@ -1418,14 +1461,31 @@
 
         const discard = document.getElementById('uno-discard-zone');
         discard.innerHTML = uno.topCard ? unoCardFaceMarkup(uno.topCard) : '';
-        const hand = isDealing ? [] : (me.hand || []);
+        const hand = isDealing ? [] : sortUnoHand(me.hand || []);
         document.getElementById('uno-hand-count').textContent = isDealing ? '나눠 받는 중' : `${hand.length}장`;
-        document.getElementById('uno-hand-row').innerHTML = hand.map((card) => {
+        const handRow = document.getElementById('uno-hand-row');
+        const previousHandScroll = handRow.scrollLeft;
+        handRow.classList.toggle('dense', hand.length > 8);
+        handRow.classList.toggle('very-dense', hand.length > 11);
+        handRow.innerHTML = hand.map((card) => {
             const playable = myTurn && !pending && unoCardIsPlayable(card, uno, me);
             return `<button id="uno-hand-card-${card.id}" class="uno-hand-card ${playable ? 'playable' : ''}" type="button"
                 aria-label="${UNO_COLOR_LABELS[card.color] || '무지개'} ${escapeHtml(unoCardLabel(card))} 카드${playable ? ', 낼 수 있음' : ''}"
                 ${playable ? `onclick="chooseUnoCard(${card.id})"` : 'disabled'}>${unoCardFaceMarkup(card)}</button>`;
         }).join('');
+        handRow.scrollLeft = previousHandScroll;
+        if (uno.drewCardId !== null && uno.drewCardId !== undefined) {
+            requestAnimationFrame(() => {
+                const drawnCard = document.getElementById(`uno-hand-card-${uno.drewCardId}`);
+                if (drawnCard) {
+                    const rowRect = handRow.getBoundingClientRect();
+                    const cardRect = drawnCard.getBoundingClientRect();
+                    if (cardRect.left < rowRect.left || cardRect.right > rowRect.right) {
+                        drawnCard.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
+                    }
+                }
+            });
+        }
 
         const message = document.getElementById('uno-message-text');
         if (action && action.id !== priorActionId) {
@@ -1540,6 +1600,7 @@
             lastDobbleAnimatedId = null;
             lastDobbleCardVersion = null;
             lastUnoActionId = 0;
+            lastUnoToastActionId = null;
             lastUnoRoomCode = state.roomCode;
             lastUnoDealId = null;
             unoActionNoticeText = '';
