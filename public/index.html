@@ -633,8 +633,9 @@
             • 먼저 정확히 종을 친 사람이 가운데 카드를 모두 가져가 자기 덱 맨 아래에 넣어요.<br>
             • 틀리게 종을 치면 자기 카드 한 장씩을 다른 친구들에게 줘요. 5명이면 최대 4장을 줘요.<br>
             • 화면의 반응 시간은 각자 카드가 보인 뒤 종을 누를 때까지예요. 여러 명이 누르면 500ms 동안 모아 가장 빠른 시간을 비교해요.<br>
-            • 카드가 0장이 되면 탈락하지만, 공개 카드가 있는 판마다 종을 한 번 쳐서 맞히면 다시 살아날 수 있어요.<br>
-            • 마지막까지 카드가 남아 있는 한 명이 우승해요.
+            • 내 뽑기 덱이 0장이 되면 탈락해요. 그래도 공개 카드가 있을 때 정확히 5개면 종을 쳐서 부활할 수 있어요.<br>
+            • 탈락자의 부활 기회는 누군가 공개 더미를 가져가면 다시 생겨요. 같은 공개 더미에서는 한 번만 시도할 수 있어요.<br>
+            • 뽑기 덱이 남은 마지막 한 명이 우승해요.
         </div>
 
         <div id="dobble-assets-status" class="lobby-waiting-box dobble-assets-status hidden" role="status" aria-live="polite">
@@ -998,8 +999,8 @@
             const offenderState = halliLastState?.players[result.offenderId];
             const offender = offenderState?.name || '친구';
             const penaltyCount = Number(result.penaltyCount) || 0;
-            toast.textContent = offenderState?.halliEliminated
-                ? `${offender}가 부활 종 기회를 사용했어!\n이번 판에는 다시 누를 수 없어.`
+            toast.textContent = result.revivalAttempt
+                ? `${offender}가 부활 종 기회를 사용했어!\n이번 공개 더미에서는 다시 누를 수 없어.`
                 : penaltyCount
                 ? `${offender}가 종을 잘못 눌렀어!\n패널티 카드 ${penaltyCount}장을 나눠줬어.`
                 : `${offender}가 종을 잘못 눌렀어!\n패널티로 줄 카드가 없어.`;
@@ -1061,13 +1062,17 @@
             halliPendingTimer = null;
         }
         const players = halli.playerOrder.map((id) => state.players[id]).filter(Boolean);
+        const hasAnyDrawDeck = players.some((player) => (Number(player.halliDrawCount) || 0) > 0);
         const isMyTurn = state.gameState === 'HALLI_PLAYING' && halli.currentPlayerId === me?.id && (me?.halliDrawCount || 0) > 0;
         halliCanFlip = isMyTurn && !halliFlipPending;
         const deckElement = document.getElementById('halli-draw-deck');
         deckElement.setAttribute('aria-disabled', halliCanFlip ? 'false' : 'true');
         deckElement.setAttribute('aria-label', halliCanFlip ? '내 덱 맨 위 카드를 끌어 공개하기' : '내 차례를 기다리는 중');
         const hasUsedBellThisBoard = Boolean(halli.viewerRungThisBoard);
-        document.getElementById('halli-ring').disabled = !me || !halli.hasVisibleCards || hasUsedBellThisBoard;
+        const hasUsedRevivalThisRound = Boolean(halli.viewerUsedRevivalThisRound);
+        const viewerIsEliminated = Boolean(me?.halliEliminated);
+        document.getElementById('halli-ring').disabled = !me || !halli.hasVisibleCards ||
+            (viewerIsEliminated ? hasUsedRevivalThisRound : hasUsedBellThisBoard);
         document.querySelectorAll('.halli-emote-button').forEach((button) => {
             button.disabled = !['HALLI_PLAYING', 'HALLI_SETTLING'].includes(state.gameState);
         });
@@ -1079,7 +1084,7 @@
         const currentCardIds = {};
         tableElement.innerHTML = opponents.map((player) => {
             const elapsed = halli.reactionTimes?.[player.id] ?? halli.lastResult?.reactionTimes?.[player.id];
-            const onTurn = halli.currentPlayerId === player.id && state.gameState === 'HALLI_PLAYING';
+            const onTurn = halli.currentPlayerId === player.id && state.gameState === 'HALLI_PLAYING' && player.halliDrawCount > 0;
             const isWinner = halli.winnerId === player.id && state.gameState === 'GAME_OVER';
             const turnLabel = isWinner ? '👑 승리' : onTurn ? '🟠 차례' : player.halliEliminated ? '탈락' : '';
             const card = player.halliFaceUp;
@@ -1114,17 +1119,19 @@
             notice.textContent = '공개 카드가 이동했어.';
         } else if (state.gameState === 'HALLI_SETTLING') {
             notice.textContent = '종이 울렸어! 500ms 동안 다른 친구들의 반응도 확인 중…';
+        } else if (!hasAnyDrawDeck) {
+            notice.textContent = '모두 덱을 다 썼어! 과일이 정확히 5개면 종을 쳐서 부활할 수 있어.';
         } else {
             notice.textContent = '차례인 친구가 카드를 뒤집어! 과일 개수를 잘 보고 종을 눌러.';
         }
         document.getElementById('halli-turn-help').textContent = state.gameState === 'HALLI_SETTLING'
             ? '판정 중이야. 잠깐 기다려줘.'
             : me?.halliEliminated
-                ? hasUsedBellThisBoard
-                    ? '이번 판 부활 종 기회를 사용했어. 다음 카드 공개를 기다려줘.'
+                ? hasUsedRevivalThisRound
+                    ? '이번 공개 더미에서 부활 종 기회를 썼어. 누군가 카드를 가져가면 다시 기회가 생겨.'
                     : halli.hasVisibleCards
-                        ? '탈락했어도 이번 판 종 기회가 있어. 정확히 5개일 때 한 번 눌러봐!'
-                        : '탈락했어. 카드가 공개되면 과일 개수를 보고 종을 한 번 눌러봐!'
+                        ? '탈락했어도 공개 더미마다 한 번 부활 기회가 있어. 정확히 5개일 때 눌러봐!'
+                        : '탈락했어. 공개 카드가 쌓이면 과일 개수를 보고 한 번 종을 쳐봐!'
                 : halliCanFlip
                     ? '내 차례야! 아래 덱 카드를 내 공개 카드 자리로 끌어 올려.'
                     : hasUsedBellThisBoard

@@ -110,20 +110,24 @@ function halliFaceUpTotal(room) {
     return Object.values(room.players).reduce((sum, player) => sum + (player.halliFaceUp?.length || 0), 0);
 }
 
-function halliHasCards(player) {
-    return (player.halliDraw?.length || 0) + (player.halliFaceUp?.length || 0) > 0;
+function halliHasDrawCards(player) {
+    return (player.halliDraw?.length || 0) > 0;
 }
 
 function halliFinishIfNeeded(room) {
-    const standing = Object.values(room.players).filter(halliHasCards);
-    if (standing.length <= 1) {
-        room.halli.winnerId = standing[0]?.id || null;
+    const standing = Object.values(room.players).filter(halliHasDrawCards);
+    if (standing.length === 1) {
+        room.halli.winnerId = standing[0].id;
         room.gameState = 'GAME_OVER';
         clearHalliTimer(room);
         return true;
     }
-    if (standing.every((player) => !player.halliDraw.length) && !halliIsExactFive(room)) {
-        const winner = standing.sort((a, b) =>
+    if (standing.length === 0) {
+        const canRevive = halliFaceUpTotal(room) > 0 && halliIsExactFive(room) &&
+            room.halli.playerOrder.some((playerId) => !room.halli.revivalUsedPlayers?.[playerId]);
+        if (canRevive) return false;
+
+        const winner = Object.values(room.players).sort((a, b) =>
             ((b.halliDraw?.length || 0) + (b.halliFaceUp?.length || 0)) -
             ((a.halliDraw?.length || 0) + (a.halliFaceUp?.length || 0))
         )[0];
@@ -184,6 +188,7 @@ function halliResolveClaims(room) {
             reactionTimes: { ...halli.reactionTimes }
         };
         winner.score = winner.halliDraw.length;
+        halli.revivalUsedPlayers = {};
     }
     halli.reactionTimes = {};
     halli.claims = [];
@@ -195,14 +200,13 @@ function halliResolveClaims(room) {
     broadcastRoom(room);
 }
 
-function halliGivePenalty(room, offender) {
+function halliGivePenalty(room, offender, revivalAttempt = false) {
     const halli = room.halli;
     const recipients = halli.playerOrder.map((id) => room.players[id])
         .filter((player) => player && player.id !== offender.id);
     let paid = 0;
     for (const recipient of recipients) {
         let card = offender.halliDraw.pop();
-        if (!card) card = offender.halliFaceUp.pop();
         if (!card) break;
         recipient.halliDraw.unshift(card);
         recipient.score = recipient.halliDraw.length;
@@ -213,6 +217,7 @@ function halliGivePenalty(room, offender) {
         id: ++halli.resultSequence,
         type: 'wrong',
         offenderId: offender.id,
+        revivalAttempt,
         penaltyCount: paid,
         reactionTimes: { ...halli.reactionTimes }
     };
@@ -395,7 +400,7 @@ function snapshotFor(room, viewerId) {
             halliDrawCount: player.halliDraw?.length || 0,
             halliFaceUp: player.halliFaceUp?.length ? { ...player.halliFaceUp[player.halliFaceUp.length - 1] } : null,
             halliFaceUpCount: player.halliFaceUp?.length || 0,
-            halliEliminated: room.gameMode === 'HALLI' && !halliHasCards(player)
+            halliEliminated: room.gameMode === 'HALLI' && !halliHasDrawCards(player)
         };
     }
 
@@ -430,6 +435,7 @@ function snapshotFor(room, viewerId) {
             exactFive: halliIsExactFive(room),
             hasVisibleCards: halliFaceUpTotal(room) > 0,
             viewerRungThisBoard: Boolean(room.halli.ringedPlayers?.[viewerId]),
+            viewerUsedRevivalThisRound: Boolean(room.halli.revivalUsedPlayers?.[viewerId]),
             reactionTimes: { ...room.halli.reactionTimes },
             lastResult: room.halli.lastResult ? {
                 ...room.halli.lastResult,
@@ -746,6 +752,7 @@ io.on('connection', (socket) => {
                 flipAllowedAt: 0,
                 reactionTimes: {},
                 ringedPlayers: {},
+                revivalUsedPlayers: {},
                 claims: [],
                 lastResult: null,
                 resultSequence: 0,
@@ -835,14 +842,20 @@ io.on('connection', (socket) => {
         if (!['HALLI_PLAYING', 'HALLI_SETTLING'].includes(room.gameState)) return;
         const version = Number(payload.boardVersion);
         if (!Number.isInteger(version) || version !== halli.boardVersion) return;
-        if (Object.prototype.hasOwnProperty.call(halli.ringedPlayers, socket.id)) return;
+        const isEliminated = !halliHasDrawCards(player);
+        if (isEliminated) {
+            if (Object.prototype.hasOwnProperty.call(halli.revivalUsedPlayers, socket.id)) return;
+        } else if (Object.prototype.hasOwnProperty.call(halli.ringedPlayers, socket.id)) {
+            return;
+        }
         const reported = Number(payload.elapsedMs);
         const elapsedMs = Number.isFinite(reported) ? Math.max(0, Math.min(10000, Math.round(reported))) : 10000;
         halli.ringedPlayers[socket.id] = true;
+        if (isEliminated) halli.revivalUsedPlayers[socket.id] = true;
         halli.reactionTimes[socket.id] = elapsedMs;
 
         if (!halliIsExactFive(room)) {
-            halliGivePenalty(room, player);
+            halliGivePenalty(room, player, isEliminated);
         } else {
             halli.claims.push({ playerId: player.id, elapsedMs, receivedAt: Date.now() });
             if (room.gameState !== 'HALLI_SETTLING') {
