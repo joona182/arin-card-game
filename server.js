@@ -25,6 +25,8 @@ const UNO_DEAL_CARD_STAGGER_MS = 110;
 const HALLI_SETTLE_MS = 500;
 const HALLI_MIN_VISIBLE_MS = 300;
 const HALLI_FRUITS = ['🍓', '🍋', '🍇', '🍈'];
+const HALLI_EMOTES = new Set(['cry', 'laugh', 'love', 'smug', 'dance']);
+const HALLI_EMOTE_COOLDOWN_MS = 650;
 const SEAT_COLORS = new Set(['red', 'blue', 'green', 'orange', 'purple']);
 const UNO_COLORS = ['red', 'blue', 'yellow', 'green'];
 const INITIAL_SCORE_DECK = [
@@ -849,6 +851,19 @@ io.on('connection', (socket) => {
             }
         }
         broadcastRoom(room);
+    });
+
+    socket.on('halli-emote', (payload = {}) => {
+        const room = getCurrentRoom();
+        if (!room || room.gameMode !== 'HALLI' || !room.players[socket.id]) return;
+        if (!['HALLI_PLAYING', 'HALLI_SETTLING'].includes(room.gameState)) return;
+        const emote = String(payload?.emote || '');
+        if (!HALLI_EMOTES.has(emote)) return;
+
+        const now = Date.now();
+        if (now - (socket.data.lastHalliEmoteAt || 0) < HALLI_EMOTE_COOLDOWN_MS) return;
+        socket.data.lastHalliEmoteAt = now;
+        io.to(room.roomCode).emit('halli-emote', { playerId: socket.id, emote });
     });
 
     socket.on('uno-draw', () => {
