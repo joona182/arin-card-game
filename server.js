@@ -426,6 +426,8 @@ function snapshotFor(room, viewerId) {
             deckCount: room.halli.deckCount,
             settling: room.gameState === 'HALLI_SETTLING',
             exactFive: halliIsExactFive(room),
+            hasVisibleCards: halliFaceUpTotal(room) > 0,
+            viewerRungThisBoard: Boolean(room.halli.ringedPlayers?.[viewerId]),
             reactionTimes: { ...room.halli.reactionTimes },
             lastResult: room.halli.lastResult ? {
                 ...room.halli.lastResult,
@@ -827,7 +829,7 @@ io.on('connection', (socket) => {
         const room = getCurrentRoom();
         const halli = room?.halli;
         const player = room?.players[socket.id];
-        if (!room || room.gameMode !== 'HALLI' || !halli || !player || !halliHasCards(player)) return;
+        if (!room || room.gameMode !== 'HALLI' || !halli || !player || !halliFaceUpTotal(room)) return;
         if (!['HALLI_PLAYING', 'HALLI_SETTLING'].includes(room.gameState)) return;
         const version = Number(payload.boardVersion);
         if (!Number.isInteger(version) || version !== halli.boardVersion) return;

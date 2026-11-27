@@ -613,7 +613,8 @@
             • 먼저 정확히 종을 친 사람이 가운데 카드를 모두 가져가 자기 덱 맨 아래에 넣어요.<br>
             • 틀리게 종을 치면 자기 카드 한 장씩을 다른 친구들에게 줘요. 5명이면 최대 4장을 줘요.<br>
             • 화면의 반응 시간은 각자 카드가 보인 뒤 종을 누를 때까지예요. 여러 명이 누르면 500ms 동안 모아 가장 빠른 시간을 비교해요.<br>
-            • 카드가 다 떨어지면 게임이 끝나고, 가장 많은 카드를 가진 사람이 이겨요.
+            • 카드가 0장이 되면 탈락하지만, 공개 카드가 있는 판마다 종을 한 번 쳐서 맞히면 다시 살아날 수 있어요.<br>
+            • 마지막까지 카드가 남아 있는 한 명이 우승해요.
         </div>
 
         <div id="dobble-assets-status" class="lobby-waiting-box dobble-assets-status hidden" role="status" aria-live="polite">
@@ -954,9 +955,12 @@
             const winner = halliLastState?.players[result.winnerId]?.name || '친구';
             toast.textContent = `${winner}가 먼저 눌렀어!\n공개 카드 ${result.cardCount}장 획득!`;
         } else {
-            const offender = halliLastState?.players[result.offenderId]?.name || '친구';
+            const offenderState = halliLastState?.players[result.offenderId];
+            const offender = offenderState?.name || '친구';
             const penaltyCount = Number(result.penaltyCount) || 0;
-            toast.textContent = penaltyCount
+            toast.textContent = offenderState?.halliEliminated
+                ? `${offender}가 부활 종 기회를 사용했어!\n이번 판에는 다시 누를 수 없어.`
+                : penaltyCount
                 ? `${offender}가 종을 잘못 눌렀어!\n패널티 카드 ${penaltyCount}장을 나눠줬어.`
                 : `${offender}가 종을 잘못 눌렀어!\n패널티로 줄 카드가 없어.`;
         }
@@ -1022,7 +1026,8 @@
         const deckElement = document.getElementById('halli-draw-deck');
         deckElement.setAttribute('aria-disabled', halliCanFlip ? 'false' : 'true');
         deckElement.setAttribute('aria-label', halliCanFlip ? '내 덱 맨 위 카드를 끌어 공개하기' : '내 차례를 기다리는 중');
-        document.getElementById('halli-ring').disabled = !me || me.halliEliminated;
+        const hasUsedBellThisBoard = Boolean(halli.viewerRungThisBoard);
+        document.getElementById('halli-ring').disabled = !me || !halli.hasVisibleCards || hasUsedBellThisBoard;
         const opponents = players.filter((player) => player.id !== me?.id);
         const tableElement = document.getElementById('halli-table');
         tableElement.classList.toggle('one-opponent', opponents.length === 1);
@@ -1068,11 +1073,19 @@
         } else {
             notice.textContent = '차례인 친구가 카드를 뒤집어! 과일 개수를 잘 보고 종을 눌러.';
         }
-        document.getElementById('halli-turn-help').textContent = halliCanFlip
-            ? '내 차례야! 아래 덱 카드를 내 공개 카드 자리로 끌어 올려.'
-            : state.gameState === 'HALLI_SETTLING'
-                ? '판정 중이야. 잠깐 기다려줘.'
-                : '차례를 기다려줘. 틀린 종은 친구들에게 카드를 줘.';
+        document.getElementById('halli-turn-help').textContent = state.gameState === 'HALLI_SETTLING'
+            ? '판정 중이야. 잠깐 기다려줘.'
+            : me?.halliEliminated
+                ? hasUsedBellThisBoard
+                    ? '이번 판 부활 종 기회를 사용했어. 다음 카드 공개를 기다려줘.'
+                    : halli.hasVisibleCards
+                        ? '탈락했어도 이번 판 종 기회가 있어. 정확히 5개일 때 한 번 눌러봐!'
+                        : '탈락했어. 카드가 공개되면 과일 개수를 보고 종을 한 번 눌러봐!'
+                : halliCanFlip
+                    ? '내 차례야! 아래 덱 카드를 내 공개 카드 자리로 끌어 올려.'
+                    : hasUsedBellThisBoard
+                        ? '이번 공개 판정에서 이미 종을 쳤어. 다음 카드 공개를 기다려줘.'
+                        : '차례를 기다려줘. 틀린 종은 친구들에게 카드를 줘.';
         if (newResult) {
             halliToastResultId = newResult.id;
             showHalliResult(newResult, transferMoves);
