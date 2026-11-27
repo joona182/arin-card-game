@@ -520,7 +520,9 @@
         .halli-paw-pad { position:absolute; left:50%; bottom:2px; display:grid; place-items:center; box-sizing:border-box; width:70px; height:60px; border-radius:50% 50% 48% 48% / 44% 44% 56% 56%; background:#fff1d9; font-size:2.65rem; transform:translateX(-50%); }
         .halli-paw-pad > span { position:relative; z-index:1; filter:drop-shadow(0 2px 1px #9a4c19); }
         #halli-ring:active, #halli-ring.is-pressed { transform:translateY(4px); box-shadow:0 3px 0 #74231f, 0 6px 12px #0002; }
-        #halli-ring:disabled { opacity:.58; cursor:default; }
+        #halli-ring[aria-disabled="true"] { opacity:.58; cursor:default; }
+        #halli-ring.tap-feedback { animation:halli-ring-tap .12s ease-out; }
+        @keyframes halli-ring-tap { 0% { transform:translateY(0); box-shadow:0 7px 0 #74231f,0 10px 18px #0002; } 35%,70% { transform:translateY(4px); box-shadow:0 3px 0 #74231f,0 6px 12px #0002; } 100% { transform:translateY(0); box-shadow:0 7px 0 #74231f,0 10px 18px #0002; } }
         .halli-emote-control { display:flex; flex-direction:column; align-items:center; gap:5px; }
         .halli-emote-picker { display:flex; align-items:center; justify-content:center; gap:8px; padding:6px 9px; border:1px solid #ddc99f; border-radius:22px; background:#fff9ea; box-shadow:0 3px 9px #6d49241a; }
         .halli-emote-button { display:grid; place-items:center; box-sizing:border-box; flex:none; width:34px; height:34px; padding:0; overflow:hidden; border:1px solid #ddc99f; border-radius:50%; background:#fffdf7; box-shadow:0 2px 4px #6d49241a; font-size:1rem; line-height:1; cursor:pointer; -webkit-tap-highlight-color:transparent; }
@@ -779,7 +781,7 @@
         <div class="halli-topbar"><span>🔔 냥이 할리갈리</span><button class="uno-reset" type="button" onclick="confirmReset()">🔄 새로하기</button></div>
         <div id="halli-notice" class="halli-notice" role="status" aria-live="polite">차례인 친구가 카드를 뒤집어!</div>
         <div id="halli-table" class="halli-table"></div>
-        <div class="halli-center"><div id="halli-public-total" class="halli-public-total">공개 덱<br><strong>0장</strong></div><button id="halli-ring" type="button" aria-label="종 치기"><span class="halli-paw-print" aria-hidden="true"><i class="halli-paw-toe toe-one"></i><i class="halli-paw-toe toe-two"></i><i class="halli-paw-toe toe-three"></i><i class="halli-paw-toe toe-four"></i><span class="halli-paw-pad"><span>🔔</span></span></span></button></div>
+        <div class="halli-center"><div id="halli-public-total" class="halli-public-total">공개 덱<br><strong>0장</strong></div><button id="halli-ring" type="button" aria-label="종 치기" aria-disabled="true"><span class="halli-paw-print" aria-hidden="true"><i class="halli-paw-toe toe-one"></i><i class="halli-paw-toe toe-two"></i><i class="halli-paw-toe toe-three"></i><i class="halli-paw-toe toe-four"></i><span class="halli-paw-pad"><span>🔔</span></span></span></button></div>
         <section id="halli-own-dropzone" class="halli-own-area" aria-label="내 공개 카드 놓는 자리">
             <div id="halli-own-heading" class="halli-own-heading halli-reaction-name"><span id="halli-own-heading-text">내 공개 카드</span><span id="halli-own-reaction"></span></div>
             <div id="halli-own-card"></div>
@@ -1077,8 +1079,8 @@
         const hasUsedBellThisBoard = Boolean(halli.viewerRungThisBoard);
         const hasUsedRevivalThisRound = Boolean(halli.viewerUsedRevivalThisRound);
         const viewerIsEliminated = Boolean(me?.halliEliminated);
-        document.getElementById('halli-ring').disabled = !me || !halli.hasVisibleCards ||
-            (viewerIsEliminated ? hasUsedRevivalThisRound : hasUsedBellThisBoard);
+        document.getElementById('halli-ring').setAttribute('aria-disabled', String(!me || !halli.hasVisibleCards ||
+            (viewerIsEliminated ? hasUsedRevivalThisRound : hasUsedBellThisBoard)));
         const canSendHalliEmote = ['HALLI_PLAYING', 'HALLI_SETTLING'].includes(state.gameState);
         document.querySelectorAll('.halli-emote-button').forEach((button) => {
             button.disabled = !canSendHalliEmote;
@@ -1217,8 +1219,19 @@
     const halliRingPointers = new Set();
     let halliRingTouchHandled = false;
     let halliLastTouchRingAt = -Infinity;
+    let halliTapFeedbackTimer = null;
+    function halliShowRingTapFeedback() {
+        halliRingButton.classList.remove('tap-feedback');
+        void halliRingButton.offsetWidth;
+        halliRingButton.classList.add('tap-feedback');
+        if (halliTapFeedbackTimer) clearTimeout(halliTapFeedbackTimer);
+        halliTapFeedbackTimer = setTimeout(() => {
+            halliRingButton.classList.remove('tap-feedback');
+            halliTapFeedbackTimer = null;
+        }, 140);
+    }
     function halliSubmitRing() {
-        if (halliSeenVersion === null || halliRingButton.disabled) return;
+        if (halliSeenVersion === null || halliRingButton.getAttribute('aria-disabled') === 'true') return;
         socket.emit('halli-ring', {
             boardVersion: halliSeenVersion,
             elapsedMs: Math.max(0, Math.round(performance.now() - halliShownAt))
@@ -1226,8 +1239,8 @@
     }
     halliRingButton.addEventListener('pointerdown', (event) => {
         if (event.pointerType !== 'touch') return;
-        if (halliRingButton.disabled) return;
         event.preventDefault();
+        halliShowRingTapFeedback();
         halliLastTouchRingAt = performance.now();
         halliRingPointers.add(event.pointerId);
         halliRingButton.classList.add('is-pressed');
@@ -1252,14 +1265,17 @@
         // Keyboard clicks stay accessible; touch is already handled on pointerdown.
         if (event.pointerType === 'touch') return;
         if (event.detail === 0) {
+            halliShowRingTapFeedback();
             halliSubmitRing();
             return;
         }
         if (event.pointerType === 'mouse' || event.pointerType === 'pen') {
+            halliShowRingTapFeedback();
             halliSubmitRing();
             return;
         }
         if (performance.now() - halliLastTouchRingAt < 800) return;
+        halliShowRingTapFeedback();
         halliSubmitRing();
     });
     const halliEmoteControl = document.querySelector('.halli-emote-control');
