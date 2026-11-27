@@ -509,29 +509,25 @@
         .halli-center { display:flex; justify-content:center; align-items:center; gap:12px; padding:2px 0; }
         .halli-public-total { min-width:78px; padding:7px 9px; border:1px solid #ddc99f; border-radius:12px; background:#fff9ea; color:#806444; text-align:center; font-size:.78rem; line-height:1.25; }
         .halli-public-total strong { color:#372514; font-size:1rem; }
-        #halli-ring { position:relative; display:flex; flex:none; width:132px; height:136px; align-items:center; justify-content:flex-end; flex-direction:column; gap:0; padding:0 0 3px; border:0; background:transparent; color:#fff9e9; font-size:1rem; font-weight:900; cursor:pointer; -webkit-tap-highlight-color:transparent; }
-        .halli-paw-print { position:absolute; top:0; left:50%; width:112px; height:108px; transform:translateX(-50%); }
-        .halli-paw-toe { position:absolute; display:block; width:27px; height:31px; border:4px solid #a62f28; border-radius:50%; background:#e64d3e; box-shadow:0 3px 0 #74231f; }
-        .halli-paw-toe.toe-one { left:7px; top:20px; transform:rotate(-27deg); }
-        .halli-paw-toe.toe-two { left:33px; top:5px; transform:rotate(-10deg); }
-        .halli-paw-toe.toe-three { right:33px; top:5px; transform:rotate(10deg); }
-        .halli-paw-toe.toe-four { right:7px; top:20px; transform:rotate(27deg); }
-        .halli-paw-pad { position:absolute; left:19px; bottom:3px; display:flex; width:74px; height:66px; align-items:center; justify-content:center; border:5px solid #a62f28; border-radius:48% 48% 52% 52% / 44% 44% 58% 58%; background:#e64d3e; box-shadow:0 5px 0 #74231f, 0 8px 14px #0002; font-size:2.55rem; }
-        .halli-paw-pad::after { content:''; position:absolute; left:50%; bottom:-10px; width:27px; height:18px; border-radius:50%; background:#e64d3e; transform:translateX(-50%); }
-        .halli-paw-pad > span { position:relative; z-index:1; }
-        .halli-ring-label { position:relative; z-index:2; margin-bottom:7px; font-size:.78rem; letter-spacing:.04em; text-shadow:0 1px 2px #74231f; }
-        #halli-ring:active .halli-paw-print { transform:translate(-50%,3px); }
+        #halli-ring { position:relative; display:block; flex:none; width:132px; height:112px; padding:0; border:0; background:transparent; cursor:pointer; -webkit-tap-highlight-color:transparent; }
+        .halli-paw-print { position:absolute; top:0; left:50%; width:112px; height:108px; --paw-scale:1; transform:translateX(-50%) scale(var(--paw-scale)); }
+        .halli-paw-toe { position:absolute; display:block; box-sizing:border-box; width:25px; height:28px; border:3px solid #a62f28; border-radius:50%; background:#e64d3e; box-shadow:0 3px 0 #74231f; }
+        .halli-paw-toe.toe-one { left:12px; top:18px; transform:rotate(-25deg); }
+        .halli-paw-toe.toe-two { left:33px; top:3px; transform:rotate(-8deg); }
+        .halli-paw-toe.toe-three { right:33px; top:3px; transform:rotate(8deg); }
+        .halli-paw-toe.toe-four { right:12px; top:18px; transform:rotate(25deg); }
+        .halli-paw-pad { position:absolute; left:50%; bottom:1px; display:grid; place-items:center; box-sizing:border-box; width:82px; height:72px; border:4px solid #a62f28; border-radius:50% 50% 48% 48% / 44% 44% 56% 56%; background:#e64d3e; box-shadow:0 5px 0 #74231f, 0 8px 14px #0002; font-size:2.7rem; transform:translateX(-50%); }
+        .halli-paw-pad > span { position:relative; z-index:1; filter:drop-shadow(0 2px 1px #9a4c19); }
+        #halli-ring:active .halli-paw-print { transform:translate(-50%,3px) scale(var(--paw-scale)); }
         #halli-ring:disabled { opacity:.58; cursor:default; }
         .halli-emote-control { display:flex; flex-direction:column; align-items:center; gap:5px; }
         .halli-emote-picker { display:flex; align-items:center; justify-content:center; gap:8px; padding:6px 9px; border:1px solid #ddc99f; border-radius:22px; background:#fff9ea; box-shadow:0 3px 9px #6d49241a; }
         .halli-emote-button { display:grid; place-items:center; flex:none; width:34px; height:34px; padding:0; border:1px solid #ddc99f; border-radius:50%; background:#fffdf7; box-shadow:0 2px 4px #6d49241a; font-size:1.15rem; line-height:1; cursor:pointer; -webkit-tap-highlight-color:transparent; }
         .halli-emote-button:active { transform:scale(.9); }
         .halli-emote-button:disabled { opacity:.5; cursor:default; }
-        .halli-deck-actions { display:grid; grid-template-columns:40px 86px 40px; align-items:center; justify-content:center; }
-        .halli-emote-toggle { width:36px; height:36px; border:1px solid #ddc99f; border-radius:50%; background:#fff9ea; box-shadow:0 2px 4px #6d49241a; font-size:1.15rem; cursor:pointer; -webkit-tap-highlight-color:transparent; }
+        .halli-emote-toggle { width:34px; height:34px; border:1px solid #ddc99f; border-radius:50%; background:#fff9ea; box-shadow:0 2px 4px #6d49241a; font-size:1.12rem; cursor:pointer; -webkit-tap-highlight-color:transparent; }
         .halli-emote-toggle:active { transform:scale(.92); }
         .halli-emote-toggle:disabled { opacity:.5; cursor:default; }
-        .halli-emote-spacer { grid-column:3; width:40px; height:1px; }
         .halli-reaction-name { display:flex; min-width:0; align-items:center; justify-content:center; gap:4px; }
         .halli-reaction-name .halli-player-name { min-width:0; }
         .halli-reaction-bubble { display:inline-grid; place-items:center; flex:none; min-width:25px; height:25px; padding:0 3px; border:1px solid #efca7e; border-radius:999px; background:#fff2ce; box-shadow:0 2px 5px #6d492433; font-size:1.12rem; line-height:1; animation:halli-reaction-pop .22s ease-out both; }
@@ -564,7 +560,7 @@
         .halli-flying-card.face-up::after { content:none; }
         .halli-flying-card.face-up .halli-card-face { width:76px; height:102px; }
         .halli-flying-card-count { position:absolute; right:-8px; top:-8px; display:grid; place-items:center; min-width:24px; height:24px; padding:0 4px; border-radius:99px; background:#fff7da; color:#6c382d; font-size:.72rem; font-weight:900; }
-        @media(max-height:760px) { .halli-screen { gap:5px; padding-top:8px; } .halli-player { min-height:120px; } #halli-ring { width:112px; height:122px; } .halli-paw-print { transform:translateX(-50%) scale(.84); transform-origin:top center; } .halli-fruit { font-size:21px; } .halli-draw-deck { transform:scale(.88); margin:-6px 0; } }
+        @media(max-height:760px) { .halli-screen { gap:5px; padding-top:8px; } .halli-player { min-height:120px; } #halli-ring { width:112px; height:98px; } .halli-paw-print { --paw-scale:.84; transform-origin:top center; } .halli-fruit { font-size:21px; } .halli-draw-deck { transform:scale(.88); margin:-6px 0; } }
         @media(max-width:370px) { .halli-player { min-height:126px; } .halli-player-name { font-size:.92rem; } .halli-count { font-size:.74rem; } }
         .hidden { display: none !important; }
     </style>
@@ -780,7 +776,7 @@
         <div class="halli-topbar"><span>🔔 냥이 할리갈리</span><button class="uno-reset" type="button" onclick="confirmReset()">🔄 새로하기</button></div>
         <div id="halli-notice" class="halli-notice" role="status" aria-live="polite">차례인 친구가 카드를 뒤집어!</div>
         <div id="halli-table" class="halli-table"></div>
-        <div class="halli-center"><div id="halli-public-total" class="halli-public-total">공개 덱<br><strong>0장</strong></div><button id="halli-ring" type="button" aria-label="종 치기"><span class="halli-paw-print" aria-hidden="true"><i class="halli-paw-toe toe-one"></i><i class="halli-paw-toe toe-two"></i><i class="halli-paw-toe toe-three"></i><i class="halli-paw-toe toe-four"></i><span class="halli-paw-pad"><span>🔔</span></span></span><span class="halli-ring-label">종 치기</span></button></div>
+        <div class="halli-center"><div id="halli-public-total" class="halli-public-total">공개 덱<br><strong>0장</strong></div><button id="halli-ring" type="button" aria-label="종 치기"><span class="halli-paw-print" aria-hidden="true"><i class="halli-paw-toe toe-one"></i><i class="halli-paw-toe toe-two"></i><i class="halli-paw-toe toe-three"></i><i class="halli-paw-toe toe-four"></i><span class="halli-paw-pad"><span>🔔</span></span></span></button></div>
         <section id="halli-own-dropzone" class="halli-own-area" aria-label="내 공개 카드 놓는 자리">
             <div id="halli-own-heading" class="halli-own-heading halli-reaction-name"><span id="halli-own-heading-text">내 공개 카드</span><span id="halli-own-reaction"></span></div>
             <div id="halli-own-card"></div>
@@ -794,13 +790,10 @@
                     <button class="halli-emote-button" type="button" data-halli-emote="smug" aria-label="새침한 고양이 보내기" title="새침한 고양이">😼</button>
                     <button class="halli-emote-button" type="button" data-halli-emote="dance" aria-label="춤추는 고양이 보내기" title="춤추는 고양이">🐱</button>
                 </div>
-                <div class="halli-deck-actions">
-                    <button id="halli-emote-toggle" class="halli-emote-toggle" type="button" aria-label="고양이 감정표현 열기" aria-controls="halli-emote-picker" aria-expanded="false">🐾</button>
-                    <div id="halli-draw-deck" class="halli-draw-deck" role="button" tabindex="0" aria-label="내 덱에서 카드 끌기" aria-disabled="true">
-                        <span class="halli-deck-shadow back-one"></span><span class="halli-deck-shadow back-two"></span><span class="halli-deck-top">🐱</span>
-                    </div>
-                    <span class="halli-emote-spacer" aria-hidden="true"></span>
+                <div id="halli-draw-deck" class="halli-draw-deck" role="button" tabindex="0" aria-label="내 덱에서 카드 끌기" aria-disabled="true">
+                    <span class="halli-deck-shadow back-one"></span><span class="halli-deck-shadow back-two"></span><span class="halli-deck-top">🐱</span>
                 </div>
+                <button id="halli-emote-toggle" class="halli-emote-toggle" type="button" aria-label="고양이 감정표현 열기" aria-controls="halli-emote-picker" aria-expanded="false">🐾</button>
             </div>
             <div id="halli-deck-count" class="halli-deck-count">내 덱 0장</div>
             <div class="halli-deck-caption">내 차례에 위 카드 자리로 끌어 올려</div>
