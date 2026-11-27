@@ -425,7 +425,7 @@
         .uno-result-card .uno-card-cat { height: 70%; }
         .uno-current-color { min-height: 28px; padding: 5px 11px; border: 1px solid #ffffff55; border-radius: 999px; background: #064f4b66; color: white; font-size: .75rem; font-weight: 900; text-shadow: 0 1px 2px #064f4b; }
         .uno-direction { display: flex; align-items: center; gap: 5px; color: #fff; font-size: .75rem; font-weight: 1000; text-shadow: 0 1px 4px #164f4c; }
-        .uno-direction-arrow { display: inline-grid; place-items: center; width: 27px; height: 27px; border: 2px solid #ffffffc9; border-radius: 50%; background: #ffffff22; font-size: 1.15rem; line-height: 1; transform: rotate(0deg); transition: transform .82s cubic-bezier(.18,.8,.25,1); }
+        .uno-direction-arrow { display: inline-grid; place-items: center; width: 27px; height: 27px; border: 2px solid #ffffffc9; border-radius: 50%; background: #ffffff22; font-size: 1.15rem; line-height: 1; }
         .uno-direction-arrow.spinning { animation: unoArrowPulse .82s ease-out; }
         @keyframes unoArrowPulse { 35% { scale: 1.38; filter: drop-shadow(0 0 6px #fff); } 100% { scale: 1; filter: none; } }
         .uno-table-toast { position: absolute; top: 50%; left: 50%; z-index: 20; max-width: calc(100% - 28px); padding: 12px 22px; border: 3px solid #ffd166; border-radius: 999px; background: #fffdf3; color: #d92d3a; box-shadow: 0 6px 24px #073f3b88; font-size: clamp(1.2rem, 6vw, 1.8rem); font-weight: 1000; text-align: center; white-space: nowrap; pointer-events: none; opacity: 0; transform: translate(-50%, -50%) scale(.6); }
@@ -715,8 +715,7 @@
                 </div>
                 <div id="uno-current-color" class="uno-current-color">현재 색 · 빨강</div>
                 <div id="uno-direction" class="uno-direction" aria-live="polite">
-                    <span id="uno-direction-arrow" class="uno-direction-arrow">↻</span>
-                    <span id="uno-direction-label">시계 방향</span>
+                    <span id="uno-direction-arrow" class="uno-direction-arrow" role="img" aria-label="시계 방향">↻</span>
                 </div>
             </div>
             <div id="uno-table-toast" class="uno-table-toast" role="status" aria-live="polite"></div>
@@ -931,7 +930,7 @@
                 const player = previousState.players[playerId];
                 const count = Number(player?.halliFaceUpCount) || 0;
                 const from = rectSnapshot(halliAnchor(playerId, 'face'));
-                return count && from ? { from, playerId, count, faceCard: player?.halliFaceUp || null } : null;
+                return count && from ? { from, playerId, targetPlayerId: result.winnerId, count, faceCard: player?.halliFaceUp || null } : null;
             }).filter(Boolean);
         }
         if (result.type === 'wrong') {
@@ -943,7 +942,7 @@
             return previousState.halli.playerOrder
                 .filter((playerId) => playerId !== result.offenderId)
                 .slice(0, count)
-                .map((playerId) => ({ from, playerId, count: 1 }));
+                .map((playerId) => ({ from, playerId, targetPlayerId: playerId, count: 1 }));
         }
         return [];
     }
@@ -970,7 +969,7 @@
         if (!moves?.length) return;
         let moveIndex = 0;
         for (const move of moves) {
-            const target = rectSnapshot(halliAnchor(move.playerId, 'deck'));
+            const target = rectSnapshot(halliAnchor(move.targetPlayerId, 'deck'));
             if (!target) continue;
             const sourceCount = result.type === 'correct' ? move.count : 1;
             const visualCount = Math.min(sourceCount, 4);
@@ -1839,8 +1838,8 @@
         document.getElementById('uno-current-color').textContent = `현재 색 · ${UNO_COLOR_LABELS[uno.currentColor] || '무지개'}`;
         document.getElementById('uno-current-color').style.background = UNO_COLOR_HEX[uno.currentColor] || '#7048e8';
         const directionArrow = document.getElementById('uno-direction-arrow');
-        directionArrow.style.transform = uno.direction === 1 ? 'rotate(0deg)' : 'rotate(180deg)';
-        document.getElementById('uno-direction-label').textContent = uno.direction === 1 ? '시계 방향' : '반대 방향';
+        directionArrow.textContent = uno.direction === 1 ? '↻' : '↺';
+        directionArrow.setAttribute('aria-label', uno.direction === 1 ? '시계 방향' : '반시계 방향');
         if (action && action.id !== priorActionId && action.type === 'play' && action.card?.kind === 'reverse') {
             directionArrow.classList.remove('spinning');
             void directionArrow.offsetWidth;
@@ -1848,16 +1847,22 @@
             setTimeout(() => directionArrow.classList.remove('spinning'), 900);
         }
 
-        const opponents = uno.playerOrder.filter((id) => id !== socket.id).map((id) => state.players[id]).filter(Boolean);
-        const opponentPositions = opponents.length === 1 ? ['top'] : opponents.length === 2 ? ['left', 'right'] : ['top', 'left', 'right'];
-        document.getElementById('uno-seats').innerHTML = opponents.map((player, index) => {
+        const myOrderIndex = Math.max(0, uno.playerOrder.indexOf(socket.id));
+        const nextSeatPosition = { 1: { 1: 'top' }, 2: { 1: 'left', 2: 'right' }, 3: { 1: 'left', 2: 'top', 3: 'right' } };
+        const opponents = uno.playerOrder.map((id, index) => ({
+            player: state.players[id],
+            clockwiseOffset: (index - myOrderIndex + uno.playerOrder.length) % uno.playerOrder.length
+        })).filter(({ player }) => player && player.id !== socket.id);
+        const opponentCount = opponents.length;
+        document.getElementById('uno-seats').innerHTML = opponents.map(({ player, clockwiseOffset }) => {
             const active = !isDealing && uno.currentPlayerId === player.id;
             const seatColor = COLOR_HEX[player.color] || '#ced4da';
             const cardCount = isDealing ? 0 : Math.max(0, Number(player.unoHandCount) || 0);
             const shownBacks = Math.min(cardCount, 7);
             const backs = Array.from({ length: shownBacks }, () => '<span class="uno-mini-card-back"></span>').join('');
             const extra = cardCount > shownBacks ? `<span class="uno-mini-more">+${cardCount - shownBacks}</span>` : '';
-            return `<div class="uno-seat uno-seat-${opponentPositions[index]} ${active ? 'active' : ''}" data-player-id="${escapeHtml(player.id)}" aria-label="${escapeHtml(player.name)} 카드 ${cardCount}장" style="border-color:${seatColor}">
+            const seatPosition = nextSeatPosition[opponentCount]?.[clockwiseOffset] || 'top';
+            return `<div class="uno-seat uno-seat-${seatPosition} ${active ? 'active' : ''}" data-player-id="${escapeHtml(player.id)}" aria-label="${escapeHtml(player.name)} 카드 ${cardCount}장" style="border-color:${seatColor}">
                 <div class="uno-seat-head">
                     <span class="uno-seat-avatar">🐱</span>
                     <span class="uno-seat-name">${escapeHtml(player.name)}</span>
