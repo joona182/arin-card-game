@@ -196,7 +196,12 @@ function halliResolveClaims(room) {
     halli.ringedPlayers = {};
     halli.lastFlip = null;
     halli.boardVersion++;
-    halliNextTurn(room, halli.currentIndex);
+    const winnerIndex = halli.playerOrder.indexOf(winnerClaim.playerId);
+    if (winnerIndex >= 0 && halliHasDrawCards(room.players[winnerClaim.playerId])) {
+        halli.currentIndex = winnerIndex;
+    } else {
+        halliNextTurn(room, halli.currentIndex);
+    }
     room.gameState = 'HALLI_PLAYING';
     halliFinishIfNeeded(room);
     broadcastRoom(room);
