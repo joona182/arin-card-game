@@ -49,6 +49,10 @@
             color: #343a40;
         }
         .rule-guide-box b { color: #d9480f; }
+        .halli-revival-option { display:flex; align-items:flex-start; gap:10px; padding:10px 12px; border:1px solid #e3cfaa; border-radius:10px; background:#fffaf0; margin:0 0 10px; }
+        .halli-revival-option input { flex:none; width:20px; height:20px; margin:1px 0 0; accent-color:#d9480f; }
+        .halli-revival-option label { display:block; font-weight:800; color:#51351e; }
+        .halli-revival-option small { display:block; margin-top:3px; color:#806444; line-height:1.4; }
 
         /* 대기실 착석 스타일 */
         .seat-grid { display: flex; flex-direction: column; gap: 8px; margin: 12px 0; }
@@ -639,9 +643,17 @@
             • 먼저 정확히 종을 친 사람이 가운데 카드를 모두 가져가 자기 덱 맨 아래에 넣어요.<br>
             • 틀리게 종을 치면 자기 카드 한 장씩을 다른 친구들에게 줘요. 5명이면 최대 4장을 줘요.<br>
             • 화면의 반응 시간은 각자 카드가 보인 뒤 종을 누를 때까지예요. 여러 명이 누르면 500ms 동안 모아 가장 빠른 시간을 비교해요.<br>
-            • 내 뽑기 덱이 0장이 되면 탈락해요. 그래도 공개 카드가 있을 때 정확히 5개면 종을 쳐서 부활할 수 있어요.<br>
+            • 내 뽑기 덱이 0장이 되면 탈락해요. 방장이 부활 옵션을 켰다면, 정확히 5개가 보일 때 종을 쳐서 다시 들어올 수 있어요.<br>
             • 탈락자의 부활 기회는 누군가 공개 더미를 가져가면 다시 생겨요. 같은 공개 더미에서는 한 번만 시도할 수 있어요.<br>
             • 뽑기 덱이 남은 마지막 한 명이 우승해요.
+        </div>
+
+        <div id="halli-revival-option" class="halli-revival-option hidden">
+            <input id="halli-revival-checkbox" type="checkbox" checked>
+            <div>
+                <label for="halli-revival-checkbox">탈락자 부활 허용</label>
+                <small>켜면 덱을 다 쓴 사람도 공개된 과일이 정확히 5개일 때 한 번 종을 쳐 부활할 수 있어요. 끄면 탈락 후에는 다시 참여할 수 없어요. 방장만 변경할 수 있어요.</small>
+            </div>
         </div>
 
         <div id="dobble-assets-status" class="lobby-waiting-box dobble-assets-status hidden" role="status" aria-live="polite">
@@ -1079,8 +1091,9 @@
         const hasUsedBellThisBoard = Boolean(halli.viewerRungThisBoard);
         const hasUsedRevivalThisRound = Boolean(halli.viewerUsedRevivalThisRound);
         const viewerIsEliminated = Boolean(me?.halliEliminated);
+        const revivalAllowed = halli.revivalEnabled !== false;
         document.getElementById('halli-ring').setAttribute('aria-disabled', String(!me || !halli.hasVisibleCards ||
-            (viewerIsEliminated ? hasUsedRevivalThisRound : hasUsedBellThisBoard)));
+            (viewerIsEliminated ? (!revivalAllowed || hasUsedRevivalThisRound) : hasUsedBellThisBoard)));
         const canSendHalliEmote = ['HALLI_PLAYING', 'HALLI_SETTLING'].includes(state.gameState);
         document.querySelectorAll('.halli-emote-button').forEach((button) => {
             button.disabled = !canSendHalliEmote;
@@ -1130,14 +1143,18 @@
         } else if (state.gameState === 'HALLI_SETTLING') {
             notice.textContent = '종이 울렸어! 500ms 동안 다른 친구들의 반응도 확인 중…';
         } else if (!hasAnyDrawDeck) {
-            notice.textContent = '모두 덱을 다 썼어! 과일이 정확히 5개면 종을 쳐서 부활할 수 있어.';
+            notice.textContent = revivalAllowed
+                ? '모두 덱을 다 썼어! 과일이 정확히 5개면 종을 쳐서 부활할 수 있어.'
+                : '모두 덱을 다 썼어! 탈락자 부활이 꺼져 있어.';
         } else {
             notice.textContent = '차례인 친구가 카드를 뒤집어! 과일 개수를 잘 보고 종을 눌러.';
         }
         document.getElementById('halli-turn-help').textContent = state.gameState === 'HALLI_SETTLING'
             ? '판정 중이야. 잠깐 기다려줘.'
             : me?.halliEliminated
-                ? hasUsedRevivalThisRound
+                ? !revivalAllowed
+                    ? '탈락했어. 이 방은 탈락자 부활이 꺼져 있어.'
+                    : hasUsedRevivalThisRound
                     ? '이번 공개 더미에서 부활 종 기회를 썼어. 누군가 카드를 가져가면 다시 기회가 생겨.'
                     : halli.hasVisibleCards
                         ? '탈락했어도 공개 더미마다 한 번 부활 기회가 있어. 정확히 5개일 때 눌러봐!'
@@ -1431,6 +1448,9 @@
         if (latestLobbyGameMode === 'DOBBLE' && !dobbleAssetsReady) return;
         socket.emit('toggle-ready');
     }
+    document.getElementById('halli-revival-checkbox').addEventListener('change', (event) => {
+        socket.emit('set-halli-revival', event.currentTarget.checked);
+    });
     function startGame() {
         if (latestLobbyGameMode === 'DOBBLE' && !dobbleAssetsReady) return;
         socket.emit('start-game');
@@ -2225,6 +2245,11 @@
             const isDobbleRoom = state.gameMode === 'DOBBLE';
             const isUnoRoom = state.gameMode === 'UNO';
             const isHalliRoom = state.gameMode === 'HALLI';
+            const halliRevivalOption = document.getElementById('halli-revival-option');
+            const halliRevivalCheckbox = document.getElementById('halli-revival-checkbox');
+            halliRevivalOption.classList.toggle('hidden', !isHalliRoom);
+            halliRevivalCheckbox.checked = state.halliRevivalEnabled !== false;
+            halliRevivalCheckbox.disabled = !isHost;
             latestLobbyPlayer = me;
             latestLobbyGameMode = state.gameMode || 'EYE';
             document.getElementById('display-game-mode').innerText = isDobbleRoom ? '🐱 냥이 도블' : isUnoRoom ? '🃏 냥이 UNO' : isHalliRoom ? '🔔 냥이 할리갈리' : '😼 냥이 눈치게임';

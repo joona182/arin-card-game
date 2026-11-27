@@ -90,8 +90,8 @@ function generateUnoDeck() {
 function generateHalliDeck() {
     const cards = [];
     let id = 1;
-    // 공식 분포: 과일마다 1개 5장, 2개 3장, 3개 3장, 4개 2장, 5개 1장.
-    const counts = [[1, 5], [2, 3], [3, 3], [4, 2], [5, 1]];
+    // 딜럭스 76장 분포: 과일마다 1개 6장, 2개 4장, 3개 4장, 4개 3장, 5개 2장.
+    const counts = [[1, 6], [2, 4], [3, 4], [4, 3], [5, 2]];
     for (let fruit = 0; fruit < HALLI_FRUITS.length; fruit++) {
         for (const [amount, copies] of counts) {
             for (let copy = 0; copy < copies; copy++) {
@@ -124,7 +124,7 @@ function halliFinishIfNeeded(room) {
         return true;
     }
     if (standing.length === 0) {
-        const canRevive = halliFaceUpTotal(room) > 0 && halliIsExactFive(room) &&
+        const canRevive = room.halli.revivalEnabled && halliFaceUpTotal(room) > 0 && halliIsExactFive(room) &&
             room.halli.playerOrder.some((playerId) => !room.halli.revivalUsedPlayers?.[playerId]);
         if (canRevive) return false;
 
@@ -416,6 +416,7 @@ function snapshotFor(room, viewerId) {
         roomCode: room.roomCode,
         hostId: room.hostId,
         gameMode: room.gameMode || 'EYE',
+        halliRevivalEnabled: room.halliRevivalEnabled !== false,
         players,
         gameState: room.gameState,
         currentRound: room.currentRound,
@@ -435,6 +436,7 @@ function snapshotFor(room, viewerId) {
         } : null,
         halli: room.halli ? {
             playerOrder: [...room.halli.playerOrder],
+            revivalEnabled: room.halli.revivalEnabled !== false,
             currentPlayerId: room.halli.playerOrder[room.halli.currentIndex] || null,
             boardVersion: room.halli.boardVersion,
             deckCount: room.halli.deckCount,
@@ -551,6 +553,7 @@ io.on('connection', (socket) => {
             roomCode,
             hostId: socket.id,
             gameMode,
+            halliRevivalEnabled: true,
             players: {},
             gameState: 'LOBBY',
             currentRound: 0,
@@ -628,6 +631,13 @@ io.on('connection', (socket) => {
             player.ready = !player.ready;
             broadcastRoom(room);
         }
+    });
+
+    socket.on('set-halli-revival', (enabled) => {
+        const room = getCurrentRoom();
+        if (!room || room.gameState !== 'LOBBY' || room.gameMode !== 'HALLI' || !requireHost(room)) return;
+        room.halliRevivalEnabled = Boolean(enabled);
+        broadcastRoom(room);
     });
 
     socket.on('chat-message', (payload = {}) => {
@@ -756,6 +766,7 @@ io.on('connection', (socket) => {
                 currentIndex: 0,
                 boardVersion: 1,
                 deckCount: deck.length,
+                revivalEnabled: room.halliRevivalEnabled !== false,
                 flipAllowedAt: 0,
                 reactionTimes: {},
                 ringedPlayers: {},
@@ -864,6 +875,7 @@ io.on('connection', (socket) => {
         if (!Number.isInteger(version) || (version !== halli.boardVersion && !ringingImmediatelyAfterOwnFlip)) return;
         const isEliminated = !halliHasDrawCards(player);
         if (isEliminated) {
+            if (!halli.revivalEnabled) return;
             if (Object.prototype.hasOwnProperty.call(halli.revivalUsedPlayers, socket.id)) return;
         } else if (Object.prototype.hasOwnProperty.call(halli.ringedPlayers, socket.id)) {
             return;
