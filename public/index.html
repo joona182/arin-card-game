@@ -483,6 +483,26 @@
             .uno-hand-row.dense .uno-hand-card { flex-basis: 54px; width: 54px; height: 84px; margin-left: -17px; }
             .uno-hand-row.very-dense .uno-hand-card { flex-basis: 50px; width: 50px; height: 78px; margin-left: -20px; }
         }
+        .halli-screen { display:none; min-height:100vh; padding:14px; box-sizing:border-box; background:linear-gradient(160deg,#fff9e9,#f4e2c2); color:#372514; flex-direction:column; gap:12px; }
+        .halli-topbar { display:flex; justify-content:space-between; align-items:center; font-weight:800; }
+        .halli-notice { min-height:28px; text-align:center; font-weight:800; color:#b34227; }
+        .halli-table { display:grid; grid-template-columns:repeat(auto-fit,minmax(130px,1fr)); gap:9px; }
+        .halli-player { min-height:120px; padding:10px; border:2px solid #dbc59e; border-radius:14px; background:#fffaf0; text-align:center; box-shadow:0 3px 9px #6d49241a; }
+        .halli-player.turn { border-color:#e65c3b; box-shadow:0 0 0 3px #e65c3b28; }
+        .halli-player.eliminated { opacity:.45; }
+        .halli-player-name { font-weight:800; }
+        .halli-faceup { min-height:44px; margin:8px 0; font-size:1.8rem; }
+        .halli-card { display:inline-flex; align-items:center; gap:3px; padding:4px 8px; border-radius:9px; background:#fff; border:1px solid #ead9b9; box-shadow:0 2px 4px #0002; }
+        .halli-count { color:#806444; font-size:.82rem; }
+        .halli-time { display:inline-block; margin-top:4px; padding:2px 7px; border-radius:999px; background:#fff0ce; font-size:.78rem; font-weight:800; }
+        .halli-center { display:flex; flex-wrap:wrap; justify-content:center; align-items:center; gap:12px; padding:16px 10px; border-radius:18px; background:#fff7e7; }
+        .halli-center .halli-faceup { margin:0; }
+        .halli-controls { display:flex; gap:12px; justify-content:center; }
+        .halli-controls button { width:min(45vw,220px); min-height:66px; border:0; border-radius:16px; color:white; font-size:1.2rem; font-weight:900; box-shadow:0 4px 0 #0002; }
+        #halli-flip { background:#268b58; } #halli-flip:disabled { background:#9bb9a8; }
+        #halli-ring { background:#dd4c36; font-size:1.35rem; }
+        .halli-help { text-align:center; font-size:.88rem; color:#735c40; }
+        @media(max-width:520px) { .halli-table { grid-template-columns:repeat(2,minmax(0,1fr)); } .halli-player { min-height:105px; padding:7px; } }
         .hidden { display: none !important; }
     </style>
 </head>
@@ -498,6 +518,7 @@
             <option value="EYE">😼 냥이 눈치게임</option>
             <option value="DOBBLE">🐱 냥이 도블</option>
             <option value="UNO">🃏 냥이 UNO</option>
+            <option value="HALLI">🔔 냥이 할리갈리</option>
         </select>
         
         <button onclick="createRoom()" style="margin-top: 12px; background: #ff7f50;">🏠 선택한 게임 방 만들기</button>
@@ -546,6 +567,14 @@
             • 차례는 30초예요. 시간이 끝나면 카드 한 장을 받고 다음 친구 차례로 넘어가요.<br>
             • 숫자 카드는 숫자만큼, 특수 카드는 모두 10점이에요.<br>
             • 먼저 끝낸 친구가 다른 친구들의 남은 카드 점수를 얻어요!
+        </div>
+        <div class="rule-guide-box hidden" id="halli-rule-guide">
+            <b>📜 냥이 할리갈리</b><br>
+            • 차례가 되면 내 카드 한 장을 뒤집어요. 과일별로 보이는 개수가 정확히 5개면 종을 눌러요.<br>
+            • 먼저 정확히 종을 친 사람이 가운데 카드를 모두 가져가 자기 덱 맨 아래에 넣어요.<br>
+            • 틀리게 종을 치면 자기 카드 한 장씩을 다른 친구들에게 줘요. 5명이면 최대 4장을 줘요.<br>
+            • 화면의 반응 시간은 각자 카드가 보인 뒤 종을 누를 때까지예요. 여러 명이 누르면 500ms 동안 모아 가장 빠른 시간을 비교해요.<br>
+            • 카드가 다 떨어지면 게임이 끝나고, 가장 많은 카드를 가진 사람이 이겨요.
         </div>
 
         <div id="dobble-assets-status" class="lobby-waiting-box dobble-assets-status hidden" role="status" aria-live="polite">
@@ -682,6 +711,15 @@
         </div>
     </div>
 
+    <div id="halli-screen" class="halli-screen">
+        <div class="halli-topbar"><span>🔔 냥이 할리갈리</span><button class="uno-reset" type="button" onclick="confirmReset()">🔄 새로하기</button></div>
+        <div id="halli-notice" class="halli-notice" role="status" aria-live="polite">차례인 친구가 카드를 뒤집어!</div>
+        <div id="halli-table" class="halli-table"></div>
+        <div class="halli-center"><strong>가운데 카드</strong><div id="halli-center-cards" class="halli-faceup"></div></div>
+        <div class="halli-controls"><button id="halli-flip" type="button">내 카드 뒤집기</button><button id="halli-ring" type="button">🔔 종 치기</button></div>
+        <div id="halli-turn-help" class="halli-help">차례를 기다려줘.</div>
+    </div>
+
     <!-- 4. 최종 결과 화면 -->
     <div id="gameover-screen" class="hidden">
         <h1 id="final-title">🎉 게임 종료! 최종 순위</h1>
@@ -730,6 +768,9 @@
     let unoActionNoticeText = '';
     let unoActionNoticeUntil = 0;
     let unoActionNoticeTimer = null;
+    let halliSeenVersion = null;
+    let halliShownAt = performance.now();
+    let halliToastResultId = null;
 
     const UNO_COLOR_LABELS = { red: '빨강', blue: '파랑', yellow: '노랑', green: '초록' };
     const UNO_COLOR_HEX = { red: '#ed3e4a', blue: '#3488e8', yellow: '#f5d040', green: '#26a96c' };
@@ -761,6 +802,74 @@
             }
         }
     }
+
+    const HALLI_FRUITS = ['🍓', '🍋', '🍇', '🍈'];
+    function halliCardMarkup(card) {
+        if (!card) return '<span style="color:#bda987">카드 없음</span>';
+        const fruit = HALLI_FRUITS[Number(card.fruit)] || '🍓';
+        return `<span class="halli-card">${fruit.repeat(Math.max(1, Math.min(5, Number(card.amount) || 1)))}</span>`;
+    }
+
+    function renderHalli(state, me) {
+        const halli = state.halli;
+        if (!halli) return;
+        if (halliSeenVersion !== halli.boardVersion) {
+            halliSeenVersion = halli.boardVersion;
+            halliShownAt = performance.now();
+        }
+        const players = halli.playerOrder.map((id) => state.players[id]).filter(Boolean);
+        const canFlip = state.gameState === 'HALLI_PLAYING' && halli.currentPlayerId === me?.id && (me?.halliDrawCount || 0) > 0;
+        document.getElementById('halli-flip').disabled = !canFlip;
+        document.getElementById('halli-ring').disabled = !me || me.halliEliminated;
+        document.getElementById('halli-table').innerHTML = players.map((player) => {
+            const elapsed = halli.reactionTimes?.[player.id] ?? halli.lastResult?.reactionTimes?.[player.id];
+            const onTurn = halli.currentPlayerId === player.id && state.gameState === 'HALLI_PLAYING';
+            const isWinner = halli.winnerId === player.id && state.gameState === 'GAME_OVER';
+            const turnLabel = isWinner ? '👑 승리' : onTurn ? '🟠 차례' : player.halliEliminated ? '탈락' : '';
+            return `<section class="halli-player ${onTurn ? 'turn' : ''} ${player.halliEliminated ? 'eliminated' : ''}">
+                <div class="halli-player-name">${escapeHtml(player.name)} ${player.id === me?.id ? '(나)' : ''}</div>
+                <div class="halli-count">${turnLabel || '&nbsp;'}</div>
+                <div class="halli-faceup">${halliCardMarkup(player.halliFaceUp)}</div>
+                <div class="halli-count">내 덱 ${player.halliDrawCount}장 · 공개 ${player.halliFaceUpCount}장</div>
+                ${(elapsed === undefined && !halli.lastResult) ? '' : `<div class="halli-time">${elapsed === undefined ? '미참여' : `${Math.round(elapsed)}ms`}</div>`}
+            </section>`;
+        }).join('');
+        const visibleCards = players.filter((player) => player.halliFaceUp).map((player) => halliCardMarkup(player.halliFaceUp));
+        document.getElementById('halli-center-cards').innerHTML = visibleCards.length ? visibleCards.join(' ') : '<span style="color:#bda987">아직 뒤집힌 카드가 없어</span>';
+        const notice = document.getElementById('halli-notice');
+        const result = halli.lastResult;
+        if (result?.id && result.id !== halliToastResultId) halliToastResultId = result.id;
+        if (result?.type === 'wrong') {
+            const offender = state.players[result.offenderId]?.name || '친구';
+            notice.textContent = result.offenderId === me?.id
+                ? '앗, 종을 잘못 눌렀어! 패널티 카드 지급'
+                : `${offender}가 종을 잘못 눌렀어! 패널티 카드 지급`;
+        } else if (result?.type === 'correct') {
+            const winner = state.players[result.winnerId]?.name || '친구';
+            notice.textContent = `🔔 ${winner}가 ${result.cardCount}장을 가져갔어! 각자 누른 시간은 아래에 표시돼.`;
+        } else if (state.gameState === 'HALLI_SETTLING') {
+            notice.textContent = '종이 울렸어! 500ms 동안 다른 친구들의 반응도 확인 중…';
+        } else if (halli.exactFive) {
+            notice.textContent = '과일이 정확히 5개야! 지금 종을 눌러!';
+        } else {
+            notice.textContent = '앗, 종을 잘못 눌렀어! 패널티 카드 지급';
+            if (!halli.lastResult) notice.textContent = '차례인 친구가 카드를 뒤집어!';
+        }
+        document.getElementById('halli-turn-help').textContent = canFlip
+            ? '내 차례야! 카드를 뒤집어. 카드는 최소 0.3초 보여줘.'
+            : state.gameState === 'HALLI_SETTLING'
+                ? '판정 중이야. 잠깐 기다려줘.'
+                : halli.exactFive ? '정확히 5개! 종을 눌러!' : '차례를 기다려줘. 틀린 종은 친구들에게 카드를 줘.';
+    }
+
+    document.getElementById('halli-flip').addEventListener('click', () => socket.emit('halli-flip'));
+    document.getElementById('halli-ring').addEventListener('click', () => {
+        if (halliSeenVersion === null) return;
+        socket.emit('halli-ring', {
+            boardVersion: halliSeenVersion,
+            elapsedMs: Math.max(0, Math.round(performance.now() - halliShownAt))
+        });
+    });
 
     function preloadDobbleAssets() {
         if (dobbleAssetsReady || dobbleAssetsLoading) return;
@@ -1616,6 +1725,7 @@
             pendingUnoCardId = null;
             document.getElementById('uno-color-picker').classList.add('hidden');
             document.getElementById('uno-screen').style.display = 'none';
+            document.getElementById('halli-screen').style.display = 'none';
             lastDobbleAnimatedId = null;
             lastDobbleCardVersion = null;
             lastUnoActionId = 0;
@@ -1641,13 +1751,16 @@
             document.getElementById('display-room-code').innerText = state.roomCode;
             const isDobbleRoom = state.gameMode === 'DOBBLE';
             const isUnoRoom = state.gameMode === 'UNO';
+            const isHalliRoom = state.gameMode === 'HALLI';
             latestLobbyPlayer = me;
             latestLobbyGameMode = state.gameMode || 'EYE';
-            document.getElementById('display-game-mode').innerText = isDobbleRoom ? '🐱 냥이 도블' : isUnoRoom ? '🃏 냥이 UNO' : '😼 냥이 눈치게임';
-            document.getElementById('eye-rule-guide').classList.toggle('hidden', isDobbleRoom || isUnoRoom);
+            document.getElementById('display-game-mode').innerText = isDobbleRoom ? '🐱 냥이 도블' : isUnoRoom ? '🃏 냥이 UNO' : isHalliRoom ? '🔔 냥이 할리갈리' : '😼 냥이 눈치게임';
+            document.getElementById('eye-rule-guide').classList.toggle('hidden', isDobbleRoom || isUnoRoom || isHalliRoom);
             document.getElementById('dobble-rule-guide').classList.toggle('hidden', !isDobbleRoom);
             document.getElementById('uno-rule-guide').classList.toggle('hidden', !isUnoRoom);
+            document.getElementById('halli-rule-guide').classList.toggle('hidden', !isHalliRoom);
             document.getElementById('dobble-screen').style.display = 'none';
+            document.getElementById('halli-screen').style.display = 'none';
             document.getElementById('dobble-assets-status').classList.toggle('hidden', !isDobbleRoom);
             if (isDobbleRoom) preloadDobbleAssets();
 
@@ -1702,6 +1815,7 @@
             document.getElementById('room-screen').classList.add('hidden');
             document.getElementById('game-screen').style.display = 'none';
             document.getElementById('dobble-screen').style.display = 'none';
+            document.getElementById('halli-screen').style.display = 'none';
             document.getElementById('gameover-screen').classList.add('hidden');
             document.getElementById('uno-screen').style.display = 'flex';
             document.getElementById('uno-color-picker').classList.add('hidden');
@@ -1717,6 +1831,7 @@
             document.getElementById('room-screen').classList.add('hidden');
             document.getElementById('gameover-screen').classList.add('hidden');
             document.getElementById('uno-screen').style.display = 'none';
+            document.getElementById('halli-screen').style.display = 'none';
             document.getElementById('game-screen').style.display = 'flex';
             document.getElementById('dobble-screen').style.display = 'none';
             document.getElementById('ingame-reset-btn').classList.toggle('hidden', !isHost);
@@ -1725,6 +1840,16 @@
             document.getElementById('status-msg').style.display = 'none';
             renderDobble(state, me);
         }
+        else if (state.gameState === 'HALLI_PLAYING' || state.gameState === 'HALLI_SETTLING') {
+            document.getElementById('login-screen').classList.add('hidden');
+            document.getElementById('room-screen').classList.add('hidden');
+            document.getElementById('game-screen').style.display = 'none';
+            document.getElementById('dobble-screen').style.display = 'none';
+            document.getElementById('uno-screen').style.display = 'none';
+            document.getElementById('gameover-screen').classList.add('hidden');
+            document.getElementById('halli-screen').style.display = 'flex';
+            renderHalli(state, me);
+        }
         else if (state.gameState === 'PLAYING' || state.gameState === 'ROUND_RESULT') {
             document.getElementById('login-screen').classList.add('hidden');
             document.getElementById('room-screen').classList.add('hidden');
@@ -1732,6 +1857,7 @@
             document.getElementById('uno-screen').style.display = 'none';
             document.getElementById('game-screen').style.display = 'flex';
             document.getElementById('dobble-screen').style.display = 'none';
+            document.getElementById('halli-screen').style.display = 'none';
             document.getElementById('game-screen').classList.remove('dobble-mode');
             document.getElementById('table-arena').classList.remove('dobble-arena');
             document.getElementById('hand-box').style.display = '';
@@ -1889,6 +2015,7 @@
             if (unoClockTimer) clearInterval(unoClockTimer);
             unoClockTimer = null;
             document.getElementById('uno-screen').style.display = 'none';
+            document.getElementById('halli-screen').style.display = 'none';
             document.getElementById('uno-color-picker').classList.add('hidden');
             if (state.gameMode === 'DOBBLE' && state.lastDobbleClaim && state.lastDobbleClaim.id !== lastDobbleAnimatedId) {
                 lastDobbleAnimatedId = state.lastDobbleClaim.id;
@@ -1901,13 +2028,20 @@
             document.getElementById('table-arena').classList.remove('dobble-arena');
             document.getElementById('dobble-screen').style.display = 'none';
             document.getElementById('gameover-screen').classList.remove('hidden');
-            document.getElementById('final-title').innerText = state.gameMode === 'DOBBLE'
+            document.getElementById('final-title').innerText = state.gameMode === 'HALLI'
+                ? `🔔 냥이 할리갈리 종료! ${state.players[state.halli?.winnerId]?.name || '친구'} 승리!`
+                : state.gameMode === 'DOBBLE'
                 ? '🎉 냥이 도블 종료! 모은 카드 순위'
                 : state.gameMode === 'UNO'
                     ? `🏆 냥이 UNO! ${state.players[state.uno?.winnerId]?.name || '친구'}가 이겼어!`
                     : '🎉 게임 종료! 최종 순위';
 
             let sortedPlayers = Object.values(state.players).filter(p => p.color !== null).sort((a,b) => {
+                if (state.gameMode === 'HALLI') {
+                    if (a.id === state.halli?.winnerId) return -1;
+                    if (b.id === state.halli?.winnerId) return 1;
+                    return ((b.halliDrawCount || 0) + (b.halliFaceUpCount || 0)) - ((a.halliDrawCount || 0) + (a.halliFaceUpCount || 0));
+                }
                 if (state.gameMode === 'UNO') {
                     if (a.id === state.uno?.winnerId) return -1;
                     if (b.id === state.uno?.winnerId) return 1;
@@ -1916,7 +2050,13 @@
                 return b.score - a.score;
             });
             let rankHtml = '';
-            if (state.gameMode === 'UNO') {
+            if (state.gameMode === 'HALLI') {
+                sortedPlayers.forEach((p, idx) => {
+                    const count = (p.halliDrawCount || 0) + (p.halliFaceUpCount || 0);
+                    const isWinner = p.id === state.halli?.winnerId;
+                    rankHtml += `<div class="rank-item ${isWinner ? 'rank-1' : ''}"><span>${isWinner ? '👑 우승' : `${idx + 1}위`}: ${escapeHtml(p.name)}</span><span><b>${count}장</b></span></div>`;
+                });
+            } else if (state.gameMode === 'UNO') {
                 rankHtml = `<div class="uno-score-guide">🧮 숫자 카드는 적힌 숫자만큼, 특수 카드는 한 장에 10점이에요.<br>남은 점수가 낮을수록 높은 순위예요!</div>`;
                 sortedPlayers.forEach((p, idx) => {
                     const isWinner = p.id === state.uno?.winnerId;

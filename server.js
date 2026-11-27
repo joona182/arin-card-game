@@ -22,6 +22,9 @@ const DOBBLE_SYMBOLS_PER_CARD = 8;
 const UNO_TURN_MS = 30000;
 const UNO_CALL_MS = 3000;
 const UNO_DEAL_CARD_STAGGER_MS = 110;
+const HALLI_SETTLE_MS = 500;
+const HALLI_MIN_VISIBLE_MS = 300;
+const HALLI_FRUITS = ['🍓', '🍋', '🍇', '🍈'];
 const SEAT_COLORS = new Set(['red', 'blue', 'green', 'orange', 'purple']);
 const UNO_COLORS = ['red', 'blue', 'yellow', 'green'];
 const INITIAL_SCORE_DECK = [
@@ -78,6 +81,139 @@ function generateUnoDeck() {
         add(null, 'wild4', 'wild4');
     }
     return cards;
+}
+
+function generateHalliDeck() {
+    const cards = [];
+    let id = 1;
+    // 공식 분포: 과일마다 1개 5장, 2개 3장, 3개 3장, 4개 2장, 5개 1장.
+    const counts = [[1, 5], [2, 3], [3, 3], [4, 2], [5, 1]];
+    for (let fruit = 0; fruit < HALLI_FRUITS.length; fruit++) {
+        for (const [amount, copies] of counts) {
+            for (let copy = 0; copy < copies; copy++) {
+                cards.push({ id: id++, fruit, amount });
+            }
+        }
+    }
+    return cards;
+}
+
+function clearHalliTimer(room) {
+    if (room?.halli?.settleTimer) clearTimeout(room.halli.settleTimer);
+    if (room?.halli) room.halli.settleTimer = null;
+}
+
+function halliFaceUpTotal(room) {
+    return Object.values(room.players).reduce((sum, player) => sum + (player.halliFaceUp?.length || 0), 0);
+}
+
+function halliHasCards(player) {
+    return (player.halliDraw?.length || 0) + (player.halliFaceUp?.length || 0) > 0;
+}
+
+function halliFinishIfNeeded(room) {
+    const standing = Object.values(room.players).filter(halliHasCards);
+    if (standing.length <= 1) {
+        room.halli.winnerId = standing[0]?.id || null;
+        room.gameState = 'GAME_OVER';
+        clearHalliTimer(room);
+        return true;
+    }
+    if (standing.every((player) => !player.halliDraw.length) && !halliIsExactFive(room)) {
+        const winner = standing.sort((a, b) =>
+            ((b.halliDraw?.length || 0) + (b.halliFaceUp?.length || 0)) -
+            ((a.halliDraw?.length || 0) + (a.halliFaceUp?.length || 0))
+        )[0];
+        room.halli.winnerId = winner?.id || null;
+        room.gameState = 'GAME_OVER';
+        clearHalliTimer(room);
+        return true;
+    }
+    return false;
+}
+
+function halliNextTurn(room, fromIndex = room.halli.currentIndex) {
+    const order = room.halli.playerOrder;
+    for (let offset = 1; offset <= order.length; offset++) {
+        const index = (fromIndex + offset) % order.length;
+        const player = room.players[order[index]];
+        if (player?.halliDraw?.length) {
+            room.halli.currentIndex = index;
+            return;
+        }
+    }
+    room.halli.currentIndex = fromIndex;
+}
+
+function halliIsExactFive(room) {
+    const totals = [0, 0, 0, 0];
+    for (const player of Object.values(room.players)) {
+        const card = player.halliFaceUp?.[player.halliFaceUp.length - 1];
+        if (card) totals[card.fruit] += card.amount;
+    }
+    return totals.some((total) => total === 5);
+}
+
+function halliResolveClaims(room) {
+    const halli = room.halli;
+    if (!halli || room.gameState !== 'HALLI_SETTLING') return;
+    clearHalliTimer(room);
+    const winnerClaim = [...halli.claims].sort((a, b) => a.elapsedMs - b.elapsedMs || a.receivedAt - b.receivedAt)[0];
+    if (!winnerClaim) {
+        room.gameState = 'HALLI_PLAYING';
+        broadcastRoom(room);
+        return;
+    }
+    const winner = room.players[winnerClaim.playerId];
+    const winnings = [];
+    for (const playerId of halli.playerOrder) {
+        const player = room.players[playerId];
+        if (player?.halliFaceUp?.length) winnings.push(...player.halliFaceUp.splice(0));
+    }
+    if (winner && winnings.length) {
+        // 획득 카드는 자기 덱 맨 아래에 들어간다. pop()으로 뽑으므로 배열 앞에 붙인다.
+        winner.halliDraw.unshift(...winnings);
+        halli.lastResult = {
+            id: ++halli.resultSequence,
+            type: 'correct',
+            winnerId: winner.id,
+            cardCount: winnings.length,
+            reactionTimes: { ...halli.reactionTimes }
+        };
+        winner.score = winner.halliDraw.length;
+    }
+    halli.reactionTimes = {};
+    halli.claims = [];
+    halli.ringedPlayers = {};
+    halli.boardVersion++;
+    halliNextTurn(room, halli.currentIndex);
+    room.gameState = 'HALLI_PLAYING';
+    halliFinishIfNeeded(room);
+    broadcastRoom(room);
+}
+
+function halliGivePenalty(room, offender) {
+    const halli = room.halli;
+    const recipients = halli.playerOrder.map((id) => room.players[id])
+        .filter((player) => player && player.id !== offender.id);
+    let paid = 0;
+    for (const recipient of recipients) {
+        let card = offender.halliDraw.pop();
+        if (!card) card = offender.halliFaceUp.pop();
+        if (!card) break;
+        recipient.halliDraw.unshift(card);
+        recipient.score = recipient.halliDraw.length;
+        paid++;
+    }
+    offender.score = offender.halliDraw.length;
+    halli.lastResult = {
+        id: ++halli.resultSequence,
+        type: 'wrong',
+        offenderId: offender.id,
+        penaltyCount: paid,
+        reactionTimes: { ...halli.reactionTimes }
+    };
+    halliFinishIfNeeded(room);
 }
 
 function unoCardPoints(card) {
@@ -252,7 +388,11 @@ function snapshotFor(room, viewerId) {
                 : null,
             dobbleCardCount: player.dobbleStack?.length || 0,
             dobbleLockMs: isViewer ? Math.max(0, (player.dobbleLockedUntil || 0) - Date.now()) : 0,
-            dobbleLockVersion: isViewer ? (player.dobbleLockVersion ?? null) : null
+            dobbleLockVersion: isViewer ? (player.dobbleLockVersion ?? null) : null,
+            halliDrawCount: player.halliDraw?.length || 0,
+            halliFaceUp: player.halliFaceUp?.length ? { ...player.halliFaceUp[player.halliFaceUp.length - 1] } : null,
+            halliFaceUpCount: player.halliFaceUp?.length || 0,
+            halliEliminated: room.gameMode === 'HALLI' && !halliHasCards(player)
         };
     }
 
@@ -277,6 +417,20 @@ function snapshotFor(room, viewerId) {
             id: room.lastDobbleClaim.id,
             winnerId: room.lastDobbleClaim.winnerId,
             card: { ...room.lastDobbleClaim.card, symbols: [...room.lastDobbleClaim.card.symbols] }
+        } : null,
+        halli: room.halli ? {
+            playerOrder: [...room.halli.playerOrder],
+            currentPlayerId: room.halli.playerOrder[room.halli.currentIndex] || null,
+            boardVersion: room.halli.boardVersion,
+            deckCount: room.halli.deckCount,
+            settling: room.gameState === 'HALLI_SETTLING',
+            exactFive: halliIsExactFive(room),
+            reactionTimes: { ...room.halli.reactionTimes },
+            lastResult: room.halli.lastResult ? {
+                ...room.halli.lastResult,
+                reactionTimes: { ...room.halli.lastResult.reactionTimes }
+            } : null,
+            winnerId: room.halli.winnerId
         } : null,
         uno: room.uno ? {
             playerOrder: [...room.uno.playerOrder],
@@ -346,7 +500,9 @@ io.on('connection', (socket) => {
             wonCards: [],
             dobbleStack: [],
             dobbleLockedUntil: 0,
-            dobbleLockVersion: 0
+            dobbleLockVersion: 0,
+            halliDraw: [],
+            halliFaceUp: []
         };
         broadcastRoom(room);
         socket.emit('chat-history', room.chatMessages || []);
@@ -364,7 +520,7 @@ io.on('connection', (socket) => {
         if (rejectIfAlreadyInRoom()) return;
 
         const createData = typeof payload === 'string' ? { name: payload, gameMode: 'EYE' } : (payload || {});
-        const gameMode = ['DOBBLE', 'UNO'].includes(createData.gameMode) ? createData.gameMode : 'EYE';
+        const gameMode = ['DOBBLE', 'UNO', 'HALLI'].includes(createData.gameMode) ? createData.gameMode : 'EYE';
         let roomCode;
         try {
             roomCode = generateRoomCode();
@@ -390,7 +546,8 @@ io.on('connection', (socket) => {
             dobbleCenterCard: null,
             dobbleCardVersion: 0,
             lastDobbleClaim: null,
-            uno: null
+            uno: null,
+            halli: null
         };
         rooms.set(roomCode, room);
         joinRoomLogic(room, createData.name);
@@ -515,6 +672,8 @@ io.on('connection', (socket) => {
         room.lastDobbleClaim = null;
         clearUnoTimer(room);
         room.uno = null;
+        clearHalliTimer(room);
+        room.halli = null;
 
         seatedPlayers.forEach((player) => {
             player.score = 0;
@@ -524,6 +683,8 @@ io.on('connection', (socket) => {
             player.dobbleStack = [];
             player.dobbleLockedUntil = 0;
             player.dobbleLockVersion = 0;
+            player.halliDraw = [];
+            player.halliFaceUp = [];
         });
 
         if (room.gameMode === 'DOBBLE') {
@@ -566,6 +727,28 @@ io.on('connection', (socket) => {
             room.currentRound = 1;
             room.gameState = 'UNO_DEALING';
             scheduleUnoDeal(room);
+        } else if (room.gameMode === 'HALLI') {
+            const deck = shuffle(generateHalliDeck());
+            for (let index = 0; index < deck.length; index++) {
+                seatedPlayers[index % seatedPlayers.length].halliDraw.push(deck[index]);
+            }
+            seatedPlayers.forEach((player) => { player.score = player.halliDraw.length; });
+            room.halli = {
+                playerOrder: seatedPlayers.map((player) => player.id),
+                currentIndex: 0,
+                boardVersion: 1,
+                deckCount: deck.length,
+                flipAllowedAt: 0,
+                reactionTimes: {},
+                ringedPlayers: {},
+                claims: [],
+                lastResult: null,
+                resultSequence: 0,
+                winnerId: null,
+                settleTimer: null
+            };
+            room.currentRound = 1;
+            room.gameState = 'HALLI_PLAYING';
         } else {
             room.gameState = 'PLAYING';
             room.currentRound = 1;
@@ -596,6 +779,8 @@ io.on('connection', (socket) => {
         room.dobbleCenterCard = null;
         room.dobbleCardVersion = 0;
         room.lastDobbleClaim = null;
+        clearHalliTimer(room);
+        room.halli = null;
 
         Object.values(room.players).forEach((player) => {
             player.ready = false;
@@ -606,8 +791,60 @@ io.on('connection', (socket) => {
             player.dobbleStack = [];
             player.dobbleLockedUntil = 0;
             player.dobbleLockVersion = 0;
+            player.halliDraw = [];
+            player.halliFaceUp = [];
         });
 
+        broadcastRoom(room);
+    });
+
+    socket.on('halli-flip', (payload = {}) => {
+        const room = getCurrentRoom();
+        const halli = room?.halli;
+        const player = room?.players[socket.id];
+        if (!room || room.gameMode !== 'HALLI' || room.gameState !== 'HALLI_PLAYING' || !halli || !player) return;
+        if (halli.playerOrder[halli.currentIndex] !== socket.id || !player.halliDraw.length) return;
+        const now = Date.now();
+        if (now < halli.flipAllowedAt) return;
+        const card = player.halliDraw.pop();
+        player.halliFaceUp.push(card);
+        player.score = player.halliDraw.length;
+        halli.boardVersion++;
+        halli.reactionTimes = {};
+        halli.claims = [];
+        halli.ringedPlayers = {};
+        halli.flipAllowedAt = now + HALLI_MIN_VISIBLE_MS;
+        halli.lastResult = null;
+        const oldIndex = halli.currentIndex;
+        halliNextTurn(room, oldIndex);
+        room.currentRound++;
+        halliFinishIfNeeded(room);
+        broadcastRoom(room);
+    });
+
+    socket.on('halli-ring', (payload = {}) => {
+        const room = getCurrentRoom();
+        const halli = room?.halli;
+        const player = room?.players[socket.id];
+        if (!room || room.gameMode !== 'HALLI' || !halli || !player || !halliHasCards(player)) return;
+        if (!['HALLI_PLAYING', 'HALLI_SETTLING'].includes(room.gameState)) return;
+        const version = Number(payload.boardVersion);
+        if (!Number.isInteger(version) || version !== halli.boardVersion) return;
+        if (Object.prototype.hasOwnProperty.call(halli.ringedPlayers, socket.id)) return;
+        const reported = Number(payload.elapsedMs);
+        const elapsedMs = Number.isFinite(reported) ? Math.max(0, Math.min(10000, Math.round(reported))) : 10000;
+        halli.ringedPlayers[socket.id] = true;
+        halli.reactionTimes[socket.id] = elapsedMs;
+
+        if (!halliIsExactFive(room)) {
+            halliGivePenalty(room, player);
+        } else {
+            halli.claims.push({ playerId: player.id, elapsedMs, receivedAt: Date.now() });
+            if (room.gameState !== 'HALLI_SETTLING') {
+                room.gameState = 'HALLI_SETTLING';
+                halli.settleTimer = setTimeout(() => halliResolveClaims(room), HALLI_SETTLE_MS);
+            }
+        }
         broadcastRoom(room);
     });
 
@@ -907,6 +1144,7 @@ io.on('connection', (socket) => {
 
         if (Object.keys(room.players).length === 0) {
             clearUnoTimer(room);
+            clearHalliTimer(room);
             rooms.delete(room.roomCode);
             return;
         }
@@ -968,6 +1206,32 @@ io.on('connection', (socket) => {
             }
             uno.lastAction = { id: ++uno.actionSequence, type: 'disconnect', playerId: socket.id };
             scheduleUnoTimer(room);
+            broadcastRoom(room);
+            return;
+        }
+
+        if (room.gameMode === 'HALLI' && room.halli && ['HALLI_PLAYING', 'HALLI_SETTLING'].includes(room.gameState)) {
+            const halli = room.halli;
+            const currentId = halli.playerOrder[halli.currentIndex];
+            halli.playerOrder = halli.playerOrder.filter((id) => id !== socket.id && room.players[id]);
+            halli.claims = halli.claims.filter((claim) => claim.playerId !== socket.id);
+            delete halli.reactionTimes[socket.id];
+            halli.currentIndex = Math.max(0, halli.playerOrder.indexOf(currentId));
+            if (halli.currentIndex < 0) halli.currentIndex = 0;
+            if (halli.playerOrder.length < MIN_PLAYERS) {
+                const remaining = halli.playerOrder.map((id) => room.players[id]).filter(Boolean);
+                halli.winnerId = remaining.sort((a, b) =>
+                    ((b.halliDraw?.length || 0) + (b.halliFaceUp?.length || 0)) -
+                    ((a.halliDraw?.length || 0) + (a.halliFaceUp?.length || 0))
+                )[0]?.id || null;
+                room.gameState = 'GAME_OVER';
+                clearHalliTimer(room);
+            } else if (room.gameState === 'HALLI_SETTLING' && !halli.claims.length) {
+                room.gameState = 'HALLI_PLAYING';
+                clearHalliTimer(room);
+            } else if (currentId === socket.id) {
+                halliNextTurn(room, halli.currentIndex - 1);
+            }
             broadcastRoom(room);
             return;
         }
