@@ -522,11 +522,16 @@
         .halli-ring-label { position:relative; z-index:2; margin-bottom:7px; font-size:.78rem; letter-spacing:.04em; text-shadow:0 1px 2px #74231f; }
         #halli-ring:active .halli-paw-print { transform:translate(-50%,3px); }
         #halli-ring:disabled { opacity:.58; cursor:default; }
-        .halli-deck-actions { display:flex; align-items:center; justify-content:center; gap:5px; }
-        .halli-emote-column { display:flex; flex-direction:column; gap:6px; }
-        .halli-emote-button { display:grid; place-items:center; flex:none; width:34px; height:34px; padding:0; border:1px solid #ddc99f; border-radius:50%; background:#fff9ea; box-shadow:0 2px 4px #6d49241a; font-size:1.15rem; line-height:1; cursor:pointer; -webkit-tap-highlight-color:transparent; }
+        .halli-emote-control { display:flex; flex-direction:column; align-items:center; gap:5px; }
+        .halli-emote-picker { display:flex; align-items:center; justify-content:center; gap:8px; padding:6px 9px; border:1px solid #ddc99f; border-radius:22px; background:#fff9ea; box-shadow:0 3px 9px #6d49241a; }
+        .halli-emote-button { display:grid; place-items:center; flex:none; width:34px; height:34px; padding:0; border:1px solid #ddc99f; border-radius:50%; background:#fffdf7; box-shadow:0 2px 4px #6d49241a; font-size:1.15rem; line-height:1; cursor:pointer; -webkit-tap-highlight-color:transparent; }
         .halli-emote-button:active { transform:scale(.9); }
         .halli-emote-button:disabled { opacity:.5; cursor:default; }
+        .halli-deck-actions { display:grid; grid-template-columns:40px 86px 40px; align-items:center; justify-content:center; }
+        .halli-emote-toggle { width:36px; height:36px; border:1px solid #ddc99f; border-radius:50%; background:#fff9ea; box-shadow:0 2px 4px #6d49241a; font-size:1.15rem; cursor:pointer; -webkit-tap-highlight-color:transparent; }
+        .halli-emote-toggle:active { transform:scale(.92); }
+        .halli-emote-toggle:disabled { opacity:.5; cursor:default; }
+        .halli-emote-spacer { grid-column:3; width:40px; height:1px; }
         .halli-reaction-name { display:flex; min-width:0; align-items:center; justify-content:center; gap:4px; }
         .halli-reaction-name .halli-player-name { min-width:0; }
         .halli-reaction-bubble { display:inline-grid; place-items:center; flex:none; min-width:25px; height:25px; padding:0 3px; border:1px solid #efca7e; border-radius:999px; background:#fff2ce; box-shadow:0 2px 5px #6d492433; font-size:1.12rem; line-height:1; animation:halli-reaction-pop .22s ease-out both; }
@@ -781,18 +786,20 @@
             <div id="halli-own-card"></div>
         </section>
         <div class="halli-deck-area">
-            <div class="halli-deck-actions">
-                <div class="halli-emote-column" aria-label="고양이 감정표현">
+            <div class="halli-emote-control">
+                <div id="halli-emote-picker" class="halli-emote-picker hidden" role="group" aria-label="보낼 고양이 감정표현">
                     <button class="halli-emote-button" type="button" data-halli-emote="cry" aria-label="우는 고양이 보내기" title="우는 고양이">😿</button>
                     <button class="halli-emote-button" type="button" data-halli-emote="laugh" aria-label="웃는 고양이 보내기" title="웃는 고양이">😹</button>
-                </div>
-                <div id="halli-draw-deck" class="halli-draw-deck" role="button" tabindex="0" aria-label="내 덱에서 카드 끌기" aria-disabled="true">
-                    <span class="halli-deck-shadow back-one"></span><span class="halli-deck-shadow back-two"></span><span class="halli-deck-top">🐱</span>
-                </div>
-                <div class="halli-emote-column" aria-label="고양이 감정표현">
                     <button class="halli-emote-button" type="button" data-halli-emote="love" aria-label="좋아하는 고양이 보내기" title="좋아하는 고양이">😻</button>
                     <button class="halli-emote-button" type="button" data-halli-emote="smug" aria-label="새침한 고양이 보내기" title="새침한 고양이">😼</button>
                     <button class="halli-emote-button" type="button" data-halli-emote="dance" aria-label="춤추는 고양이 보내기" title="춤추는 고양이">🐱</button>
+                </div>
+                <div class="halli-deck-actions">
+                    <button id="halli-emote-toggle" class="halli-emote-toggle" type="button" aria-label="고양이 감정표현 열기" aria-controls="halli-emote-picker" aria-expanded="false">🐾</button>
+                    <div id="halli-draw-deck" class="halli-draw-deck" role="button" tabindex="0" aria-label="내 덱에서 카드 끌기" aria-disabled="true">
+                        <span class="halli-deck-shadow back-one"></span><span class="halli-deck-shadow back-two"></span><span class="halli-deck-top">🐱</span>
+                    </div>
+                    <span class="halli-emote-spacer" aria-hidden="true"></span>
                 </div>
             </div>
             <div id="halli-deck-count" class="halli-deck-count">내 덱 0장</div>
@@ -1073,9 +1080,11 @@
         const viewerIsEliminated = Boolean(me?.halliEliminated);
         document.getElementById('halli-ring').disabled = !me || !halli.hasVisibleCards ||
             (viewerIsEliminated ? hasUsedRevivalThisRound : hasUsedBellThisBoard);
+        const canSendHalliEmote = ['HALLI_PLAYING', 'HALLI_SETTLING'].includes(state.gameState);
         document.querySelectorAll('.halli-emote-button').forEach((button) => {
-            button.disabled = !['HALLI_PLAYING', 'HALLI_SETTLING'].includes(state.gameState);
+            button.disabled = !canSendHalliEmote;
         });
+        document.getElementById('halli-emote-toggle').disabled = !canSendHalliEmote;
         const opponents = players.filter((player) => player.id !== me?.id);
         const tableElement = document.getElementById('halli-table');
         tableElement.classList.toggle('one-opponent', opponents.length === 1);
@@ -1212,10 +1221,35 @@
             elapsedMs: Math.max(0, Math.round(performance.now() - halliShownAt))
         });
     });
-    document.querySelectorAll('.halli-emote-button').forEach((button) => {
+    const halliEmoteControl = document.querySelector('.halli-emote-control');
+    const halliEmoteToggle = document.getElementById('halli-emote-toggle');
+    const halliEmotePicker = document.getElementById('halli-emote-picker');
+    function closeHalliEmotePicker() {
+        halliEmotePicker.classList.add('hidden');
+        halliEmoteToggle.setAttribute('aria-expanded', 'false');
+        halliEmoteToggle.setAttribute('aria-label', '고양이 감정표현 열기');
+    }
+    halliEmoteToggle.addEventListener('click', () => {
+        const opening = halliEmotePicker.classList.contains('hidden');
+        halliEmotePicker.classList.toggle('hidden', !opening);
+        halliEmoteToggle.setAttribute('aria-expanded', String(opening));
+        halliEmoteToggle.setAttribute('aria-label', opening ? '고양이 감정표현 닫기' : '고양이 감정표현 열기');
+    });
+    document.querySelectorAll('#halli-emote-picker .halli-emote-button').forEach((button) => {
         button.addEventListener('click', () => {
             socket.emit('halli-emote', { emote: button.dataset.halliEmote });
+            closeHalliEmotePicker();
+            halliEmoteToggle.focus({ preventScroll: true });
         });
+    });
+    document.addEventListener('pointerdown', (event) => {
+        if (!halliEmoteControl.contains(event.target)) closeHalliEmotePicker();
+    });
+    document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape' && !halliEmotePicker.classList.contains('hidden')) {
+            closeHalliEmotePicker();
+            halliEmoteToggle.focus({ preventScroll: true });
+        }
     });
     socket.on('halli-emote', (payload = {}) => {
         if (!payload.playerId || !HALLI_EMOTE_ICONS[payload.emote]) return;
