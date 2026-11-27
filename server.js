@@ -46,9 +46,10 @@ function normalizeName(value) {
     const cleaned = Array.from(String(value || ''))
         .filter((character) => !/[<>\u0000-\u001f\u007f]/.test(character))
         .join('')
-        .trim()
-        .slice(0, 10);
-    return cleaned || '플레이어';
+        .trim();
+    const maxLength = /[\u1100-\u11ff\u3130-\u318f\uac00-\ud7af]/.test(cleaned) ? 7 : 10;
+    const limited = Array.from(cleaned).slice(0, maxLength).join('');
+    return limited || '플레이어';
 }
 
 function shuffle(array) {

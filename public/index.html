@@ -483,22 +483,30 @@
             .uno-hand-row.dense .uno-hand-card { flex-basis: 54px; width: 54px; height: 84px; margin-left: -17px; }
             .uno-hand-row.very-dense .uno-hand-card { flex-basis: 50px; width: 50px; height: 78px; margin-left: -20px; }
         }
-        .halli-screen { display:none; min-height:100vh; padding:12px 14px max(16px, env(safe-area-inset-bottom)); box-sizing:border-box; background:linear-gradient(160deg,#fff9e9,#f4e2c2); color:#372514; flex-direction:column; gap:8px; }
+        .halli-screen { display:none; min-height:100vh; padding:12px 8px max(16px, env(safe-area-inset-bottom)); box-sizing:border-box; background:linear-gradient(160deg,#fff9e9,#f4e2c2); color:#372514; flex-direction:column; gap:8px; }
         .halli-topbar { display:flex; justify-content:space-between; align-items:center; font-weight:800; }
         .halli-notice { min-height:28px; text-align:center; font-weight:800; color:#b34227; }
         .halli-table { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; }
-        .halli-player { min-height:132px; padding:7px; border:2px solid #dbc59e; border-radius:14px; background:#fffaf0; text-align:center; box-shadow:0 3px 9px #6d49241a; }
+        .halli-table.one-opponent { grid-template-columns:minmax(180px,360px); justify-content:center; }
+        .halli-table.many-opponents { grid-template-columns:repeat(var(--halli-opponent-count),minmax(76px,1fr)); gap:4px; overflow-x:auto; overflow-y:hidden; }
+        .halli-player { box-sizing:border-box; min-width:0; min-height:132px; padding:7px; border:2px solid #dbc59e; border-radius:14px; background:#fffaf0; text-align:center; box-shadow:0 3px 9px #6d49241a; }
+        .halli-table.many-opponents .halli-player { min-height:0; padding:4px 1px; border-radius:10px; }
         .halli-player.turn { border-color:#e65c3b; box-shadow:0 0 0 3px #e65c3b28; }
         .halli-player.eliminated { opacity:.45; }
-        .halli-player-name { font-weight:800; }
+        .halli-player-name { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-weight:800; }
+        .halli-table.many-opponents .halli-player-name { font-size:clamp(.65rem,2.7vw,.88rem); }
         .halli-count { color:#806444; font-size:.82rem; }
+        .halli-table.many-opponents .halli-count { font-size:clamp(.62rem,2.4vw,.76rem); white-space:nowrap; }
         .halli-time { display:inline-block; margin-top:4px; padding:2px 7px; border-radius:999px; background:#fff0ce; font-size:.78rem; font-weight:800; }
-        .halli-card-face { position:relative; display:block; width:76px; height:102px; flex:none; overflow:hidden; border:2px solid #d9c59f; border-radius:10px; background:linear-gradient(145deg,#fff 0%,#fffdf8 100%); box-shadow:0 2px 5px #0002; }
+        .halli-faceup { display:flex; justify-content:center; margin:6px 0; }
+        .halli-card-face { box-sizing:border-box; position:relative; display:block; width:76px; height:102px; flex:none; overflow:hidden; border:2px solid #d9c59f; border-radius:10px; background:linear-gradient(145deg,#fff 0%,#fffdf8 100%); box-shadow:0 2px 5px #0002; }
         .halli-fruit { position:absolute; left:var(--fx); top:var(--fy); transform:translate(-50%,-50%); font-size:24px; line-height:1; }
         .halli-card-face.empty { display:grid; place-items:center; border-style:dashed; box-shadow:none; color:#c2ad88; font-size:.76rem; }
         .halli-card-face.halli-reveal { animation:halli-card-turn .34s cubic-bezier(.2,.75,.3,1); }
         @keyframes halli-card-turn { 0% { transform:rotateY(88deg) scale(.92); } 100% { transform:rotateY(0) scale(1); } }
-        .halli-center { display:flex; justify-content:center; align-items:center; padding:2px 0; }
+        .halli-center { display:flex; justify-content:center; align-items:center; gap:12px; padding:2px 0; }
+        .halli-public-total { min-width:78px; padding:7px 9px; border:1px solid #ddc99f; border-radius:12px; background:#fff9ea; color:#806444; text-align:center; font-size:.78rem; line-height:1.25; }
+        .halli-public-total strong { color:#372514; font-size:1rem; }
         #halli-ring { display:flex; width:132px; height:132px; align-items:center; justify-content:center; flex-direction:column; gap:3px; border:7px solid #a62f28; border-radius:50%; background:#e64d3e; color:#fff9e9; box-shadow:0 7px 0 #74231f, 0 10px 18px #0002; font-size:2.7rem; font-weight:900; cursor:pointer; -webkit-tap-highlight-color:transparent; }
         #halli-ring span { font-size:.83rem; letter-spacing:.04em; }
         #halli-ring:active { transform:translateY(4px); box-shadow:0 3px 0 #74231f, 0 6px 12px #0002; }
@@ -506,7 +514,7 @@
         .halli-own-area { display:flex; align-items:center; flex-direction:column; gap:3px; padding:6px 10px; border:2px solid #e3cfaa; border-radius:16px; background:#fff8e9; transition:background .15s,border-color .15s; }
         .halli-own-area.drag-over { border-color:#319364; background:#e4f4e8; }
         .halli-own-heading { font-weight:800; }
-        .halli-own-count { color:#806444; font-size:.82rem; }
+        .halli-own-area.turn { border-color:#e65c3b; box-shadow:0 0 0 3px #e65c3b28; }
         .halli-deck-area { display:flex; align-items:center; flex-direction:column; gap:4px; margin-top:auto; padding-top:4px; }
         .halli-draw-deck { position:relative; display:grid; place-items:center; width:86px; height:112px; border:0; border-radius:11px; background:transparent; cursor:grab; touch-action:none; user-select:none; -webkit-user-select:none; -webkit-tap-highlight-color:transparent; }
         .halli-draw-deck[aria-disabled="true"] { opacity:.58; cursor:not-allowed; }
@@ -519,8 +527,8 @@
         .halli-deck-caption { text-align:center; color:#806444; font-size:.84rem; font-weight:700; }
         .halli-deck-count { font-size:.8rem; color:#806444; }
         .halli-help { text-align:center; font-size:.88rem; color:#735c40; }
-        @media(max-height:760px) { .halli-screen { gap:5px; padding-top:8px; } .halli-player { min-height:120px; } #halli-ring { width:112px; height:112px; } .halli-card-face { width:68px; height:92px; } .halli-fruit { font-size:21px; } .halli-draw-deck { transform:scale(.88); margin:-6px 0; } }
-        @media(max-width:370px) { .halli-player { min-height:126px; } .halli-player-name { font-size:.92rem; } .halli-count { font-size:.74rem; } .halli-card-face { width:68px; height:92px; } .halli-fruit { font-size:21px; } }
+        @media(max-height:760px) { .halli-screen { gap:5px; padding-top:8px; } .halli-player { min-height:120px; } #halli-ring { width:112px; height:112px; } .halli-fruit { font-size:21px; } .halli-draw-deck { transform:scale(.88); margin:-6px 0; } }
+        @media(max-width:370px) { .halli-player { min-height:126px; } .halli-player-name { font-size:.92rem; } .halli-count { font-size:.74rem; } }
         .hidden { display: none !important; }
     </style>
 </head>
@@ -530,7 +538,8 @@
     <div id="login-screen">
         <h1>🐾 냥이 보드게임</h1>
         <p style="text-align:center; color:#666; font-size:0.9rem;">이름을 적고 새 방을 만들거나 친구 방에 들어가자!</p>
-        <input type="text" id="username" placeholder="내 이름 입력 (예: 아린이)" maxlength="10">
+        <input type="text" id="username" placeholder="내 이름 입력 (예: 아린이)" maxlength="10" autocomplete="nickname">
+        <small id="nickname-limit-hint" style="display:block; margin-top:-6px; color:#777; font-size:.78rem;">한글 포함 최대 7자 · 영문/숫자 최대 10자 (공백 포함)</small>
         <label class="mode-label" for="game-mode-select">이번 방에서 할 게임</label>
         <select id="game-mode-select" class="mode-select">
             <option value="EYE">😼 냥이 눈치게임</option>
@@ -733,11 +742,10 @@
         <div class="halli-topbar"><span>🔔 냥이 할리갈리</span><button class="uno-reset" type="button" onclick="confirmReset()">🔄 새로하기</button></div>
         <div id="halli-notice" class="halli-notice" role="status" aria-live="polite">차례인 친구가 카드를 뒤집어!</div>
         <div id="halli-table" class="halli-table"></div>
-        <div class="halli-center"><button id="halli-ring" type="button" aria-label="종 치기">🔔<span>종 치기</span></button></div>
+        <div class="halli-center"><div id="halli-public-total" class="halli-public-total">공개 덱<br><strong>0장</strong></div><button id="halli-ring" type="button" aria-label="종 치기">🔔<span>종 치기</span></button></div>
         <section id="halli-own-dropzone" class="halli-own-area" aria-label="내 공개 카드 놓는 자리">
             <div id="halli-own-heading" class="halli-own-heading">내 공개 카드</div>
             <div id="halli-own-card"></div>
-            <div id="halli-own-count" class="halli-own-count"></div>
         </section>
         <div class="halli-deck-area">
             <div id="halli-draw-deck" class="halli-draw-deck" role="button" tabindex="0" aria-label="내 덱에서 카드 끌기" aria-disabled="true">
@@ -812,6 +820,27 @@
     const UNO_COLOR_HEX = { red: '#ed3e4a', blue: '#3488e8', yellow: '#f5d040', green: '#26a96c' };
     const UNO_REPRESENTATIVE_CATS = { red: 'cat_11.png', blue: 'cat_20.png', yellow: 'cat_06.png', green: 'cat_17.png', wild: 'cat_36.png' };
 
+    function nicknameLimit(value) {
+        return /[\u1100-\u11ff\u3130-\u318f\uac00-\ud7af]/.test(value) ? 7 : 10;
+    }
+    function limitedNickname(value) {
+        const trimmed = String(value || '').trim();
+        return Array.from(trimmed).slice(0, nicknameLimit(trimmed)).join('');
+    }
+    function updateNicknameLimit(event) {
+        if (event?.isComposing) return;
+        const input = document.getElementById('username');
+        const limit = nicknameLimit(input.value);
+        const characters = Array.from(input.value);
+        if (characters.length > limit) input.value = characters.slice(0, limit).join('');
+        const includesHangul = /[\u1100-\u11ff\u3130-\u318f\uac00-\ud7af]/.test(input.value);
+        document.getElementById('nickname-limit-hint').textContent = includesHangul
+            ? '한글 포함 최대 7자 (공백 포함)'
+            : '영문·숫자 최대 10자 (공백 포함)';
+    }
+    document.getElementById('username').addEventListener('input', updateNicknameLimit);
+    document.getElementById('username').addEventListener('compositionend', updateNicknameLimit);
+
     function updateLobbyReadyButton() {
         if (!latestLobbyPlayer) return;
         const button = document.getElementById('ready-btn');
@@ -877,8 +906,12 @@
         deckElement.setAttribute('aria-label', halliCanFlip ? '내 덱 맨 위 카드를 끌어 공개하기' : '내 차례를 기다리는 중');
         document.getElementById('halli-ring').disabled = !me || me.halliEliminated;
         const opponents = players.filter((player) => player.id !== me?.id);
+        const tableElement = document.getElementById('halli-table');
+        tableElement.classList.toggle('one-opponent', opponents.length === 1);
+        tableElement.classList.toggle('many-opponents', opponents.length >= 3);
+        tableElement.style.setProperty('--halli-opponent-count', Math.max(1, opponents.length));
         const currentCardIds = {};
-        document.getElementById('halli-table').innerHTML = opponents.map((player) => {
+        tableElement.innerHTML = opponents.map((player) => {
             const elapsed = halli.reactionTimes?.[player.id] ?? halli.lastResult?.reactionTimes?.[player.id];
             const onTurn = halli.currentPlayerId === player.id && state.gameState === 'HALLI_PLAYING';
             const isWinner = halli.winnerId === player.id && state.gameState === 'GAME_OVER';
@@ -890,7 +923,7 @@
                 <div class="halli-player-name">${escapeHtml(player.name)} ${player.id === me?.id ? '(나)' : ''}</div>
                 <div class="halli-count">${turnLabel || '&nbsp;'}</div>
                 <div class="halli-faceup">${halliCardMarkup(card, cardChanged)}</div>
-                <div class="halli-count">내 덱 ${player.halliDrawCount}장 · 공개 ${player.halliFaceUpCount}장</div>
+                <div class="halli-count">덱 ${player.halliDrawCount}장</div>
                 ${(elapsed === undefined && !halli.lastResult) ? '' : `<div class="halli-time">${elapsed === undefined ? '미참여' : `${Math.round(elapsed)}ms`}</div>`}
             </section>`;
         }).join('');
@@ -899,9 +932,12 @@
         if (me) currentCardIds[me.id] = ownCard?.id ?? null;
         document.getElementById('halli-own-heading').textContent = `${me?.name || '나'} · 내 공개 카드`;
         document.getElementById('halli-own-card').innerHTML = halliCardMarkup(ownCard, ownCardChanged);
-        document.getElementById('halli-own-count').textContent = `공개 카드 ${me?.halliFaceUpCount || 0}장`;
-        document.getElementById('halli-own-dropzone').classList.remove('drag-over');
+        const ownDropzone = document.getElementById('halli-own-dropzone');
+        ownDropzone.classList.remove('drag-over');
+        ownDropzone.classList.toggle('turn', isMyTurn);
         document.getElementById('halli-deck-count').textContent = `내 덱 ${me?.halliDrawCount || 0}장`;
+        const publicDeckTotal = players.reduce((sum, player) => sum + (Number(player.halliFaceUpCount) || 0), 0);
+        document.getElementById('halli-public-total').innerHTML = `공개 덱<br><strong>${publicDeckTotal}장</strong>`;
         halliCardIdsByPlayer = currentCardIds;
         const notice = document.getElementById('halli-notice');
         const result = halli.lastResult;
@@ -1081,14 +1117,14 @@
     ];
 
     function createRoom() {
-        const name = document.getElementById('username').value.trim();
+        const name = limitedNickname(document.getElementById('username').value);
         if (!name) { alert('이름을 먼저 입력해줘!'); return; }
         const gameMode = document.getElementById('game-mode-select').value;
         socket.emit('create-room', { name, gameMode });
     }
 
     function joinRoom() {
-        const name = document.getElementById('username').value.trim();
+        const name = limitedNickname(document.getElementById('username').value);
         const code = document.getElementById('room-code-input').value.trim();
         if (!name) { alert('이름을 먼저 입력해줘!'); return; }
         if (code.length !== 4) { alert('4자리 방 번호를 입력해줘!'); return; }
