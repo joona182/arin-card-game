@@ -495,12 +495,13 @@
         .halli-card { display:inline-flex; align-items:center; gap:3px; padding:4px 8px; border-radius:9px; background:#fff; border:1px solid #ead9b9; box-shadow:0 2px 4px #0002; }
         .halli-count { color:#806444; font-size:.82rem; }
         .halli-time { display:inline-block; margin-top:4px; padding:2px 7px; border-radius:999px; background:#fff0ce; font-size:.78rem; font-weight:800; }
-        .halli-center { display:flex; flex-wrap:wrap; justify-content:center; align-items:center; gap:12px; padding:16px 10px; border-radius:18px; background:#fff7e7; }
-        .halli-center .halli-faceup { margin:0; }
-        .halli-controls { display:flex; gap:12px; justify-content:center; }
-        .halli-controls button { width:min(45vw,220px); min-height:66px; border:0; border-radius:16px; color:white; font-size:1.2rem; font-weight:900; box-shadow:0 4px 0 #0002; }
+        .halli-center { display:flex; justify-content:center; align-items:center; padding:10px; }
+        .halli-controls { display:flex; justify-content:center; }
+        .halli-controls button { width:min(72vw,300px); min-height:62px; border:0; border-radius:16px; color:white; font-size:1.15rem; font-weight:900; box-shadow:0 4px 0 #0002; }
         #halli-flip { background:#268b58; } #halli-flip:disabled { background:#9bb9a8; }
-        #halli-ring { background:#dd4c36; font-size:1.35rem; }
+        #halli-ring { display:flex; width:132px; height:132px; align-items:center; justify-content:center; flex-direction:column; gap:3px; border:7px solid #a62f28; border-radius:50%; background:#e64d3e; color:#fff9e9; box-shadow:0 7px 0 #74231f, 0 10px 18px #0002; font-size:2.7rem; font-weight:900; cursor:pointer; -webkit-tap-highlight-color:transparent; }
+        #halli-ring span { font-size:.83rem; letter-spacing:.04em; }
+        #halli-ring:active { transform:translateY(4px); box-shadow:0 3px 0 #74231f, 0 6px 12px #0002; }
         .halli-help { text-align:center; font-size:.88rem; color:#735c40; }
         @media(max-width:520px) { .halli-table { grid-template-columns:repeat(2,minmax(0,1fr)); } .halli-player { min-height:105px; padding:7px; } }
         .hidden { display: none !important; }
@@ -715,8 +716,8 @@
         <div class="halli-topbar"><span>🔔 냥이 할리갈리</span><button class="uno-reset" type="button" onclick="confirmReset()">🔄 새로하기</button></div>
         <div id="halli-notice" class="halli-notice" role="status" aria-live="polite">차례인 친구가 카드를 뒤집어!</div>
         <div id="halli-table" class="halli-table"></div>
-        <div class="halli-center"><strong>가운데 카드</strong><div id="halli-center-cards" class="halli-faceup"></div></div>
-        <div class="halli-controls"><button id="halli-flip" type="button">내 카드 뒤집기</button><button id="halli-ring" type="button">🔔 종 치기</button></div>
+        <div class="halli-center"><button id="halli-ring" type="button" aria-label="종 치기">🔔<span>종 치기</span></button></div>
+        <div class="halli-controls"><button id="halli-flip" type="button">내 카드 뒤집기</button></div>
         <div id="halli-turn-help" class="halli-help">차례를 기다려줘.</div>
     </div>
 
@@ -834,8 +835,6 @@
                 ${(elapsed === undefined && !halli.lastResult) ? '' : `<div class="halli-time">${elapsed === undefined ? '미참여' : `${Math.round(elapsed)}ms`}</div>`}
             </section>`;
         }).join('');
-        const visibleCards = players.filter((player) => player.halliFaceUp).map((player) => halliCardMarkup(player.halliFaceUp));
-        document.getElementById('halli-center-cards').innerHTML = visibleCards.length ? visibleCards.join(' ') : '<span style="color:#bda987">아직 뒤집힌 카드가 없어</span>';
         const notice = document.getElementById('halli-notice');
         const result = halli.lastResult;
         if (result?.id && result.id !== halliToastResultId) halliToastResultId = result.id;
@@ -849,17 +848,14 @@
             notice.textContent = `🔔 ${winner}가 ${result.cardCount}장을 가져갔어! 각자 누른 시간은 아래에 표시돼.`;
         } else if (state.gameState === 'HALLI_SETTLING') {
             notice.textContent = '종이 울렸어! 500ms 동안 다른 친구들의 반응도 확인 중…';
-        } else if (halli.exactFive) {
-            notice.textContent = '과일이 정확히 5개야! 지금 종을 눌러!';
         } else {
-            notice.textContent = '앗, 종을 잘못 눌렀어! 패널티 카드 지급';
-            if (!halli.lastResult) notice.textContent = '차례인 친구가 카드를 뒤집어!';
+            notice.textContent = '차례인 친구가 카드를 뒤집어! 과일 개수를 잘 보고 종을 눌러.';
         }
         document.getElementById('halli-turn-help').textContent = canFlip
-            ? '내 차례야! 카드를 뒤집어. 카드는 최소 0.3초 보여줘.'
+            ? '내 차례야! 카드를 뒤집고 과일 개수를 직접 확인해.'
             : state.gameState === 'HALLI_SETTLING'
                 ? '판정 중이야. 잠깐 기다려줘.'
-                : halli.exactFive ? '정확히 5개! 종을 눌러!' : '차례를 기다려줘. 틀린 종은 친구들에게 카드를 줘.';
+                : '차례를 기다려줘. 틀린 종은 친구들에게 카드를 줘.';
     }
 
     document.getElementById('halli-flip').addEventListener('click', () => socket.emit('halli-flip'));
