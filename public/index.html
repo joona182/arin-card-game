@@ -509,18 +509,17 @@
         .halli-center { display:flex; justify-content:center; align-items:center; gap:12px; padding:2px 0; }
         .halli-public-total { min-width:78px; padding:7px 9px; border:1px solid #ddc99f; border-radius:12px; background:#fff9ea; color:#806444; text-align:center; font-size:.78rem; line-height:1.25; }
         .halli-public-total strong { color:#372514; font-size:1rem; }
-        #halli-ring { position:relative; display:grid; flex:none; width:132px; height:132px; place-items:center; padding:0; border:7px solid #a62f28; border-radius:50%; background:#e64d3e; box-shadow:0 7px 0 #74231f, 0 10px 18px #0002; cursor:pointer; -webkit-tap-highlight-color:transparent; }
+        #halli-ring { position:relative; display:grid; flex:none; width:132px; height:132px; place-items:center; padding:0; border:7px solid #a62f28; border-radius:50%; background:#e64d3e; box-shadow:0 7px 0 #74231f, 0 10px 18px #0002; cursor:pointer; touch-action:none; user-select:none; -webkit-user-select:none; -webkit-tap-highlight-color:transparent; }
         #halli-ring::before { content:''; position:absolute; inset:4px; border-radius:50%; background:#9f332b; box-shadow:inset 0 2px 5px #6e231f55; }
         .halli-paw-print { position:relative; z-index:1; width:108px; height:104px; --paw-scale:1; transform:scale(var(--paw-scale)); }
         .halli-paw-toe { position:absolute; display:block; box-sizing:border-box; width:21px; height:26px; border-radius:50%; background:#fff1d9; }
-
-        .halli-paw-toe.toe-one { left:3px; top:25px; width:19px; height:24px; transform:rotate(-25deg); }
-        .halli-paw-toe.toe-two { left:29px; top:7px; transform:rotate(-8deg); }
-        .halli-paw-toe.toe-three { right:29px; top:7px; transform:rotate(8deg); }
-        .halli-paw-toe.toe-four { right:3px; top:25px; width:19px; height:24px; transform:rotate(25deg); }
+        .halli-paw-toe.toe-one { left:2px; top:24px; transform:rotate(-25deg); }
+        .halli-paw-toe.toe-two { left:31px; top:7px; transform:rotate(-8deg); }
+        .halli-paw-toe.toe-three { right:31px; top:7px; transform:rotate(8deg); }
+        .halli-paw-toe.toe-four { right:2px; top:24px; transform:rotate(25deg); }
         .halli-paw-pad { position:absolute; left:50%; bottom:2px; display:grid; place-items:center; box-sizing:border-box; width:70px; height:60px; border-radius:50% 50% 48% 48% / 44% 44% 56% 56%; background:#fff1d9; font-size:2.65rem; transform:translateX(-50%); }
         .halli-paw-pad > span { position:relative; z-index:1; filter:drop-shadow(0 2px 1px #9a4c19); }
-        #halli-ring:active { transform:translateY(4px); box-shadow:0 3px 0 #74231f, 0 6px 12px #0002; }
+        #halli-ring:active, #halli-ring.is-pressed { transform:translateY(4px); box-shadow:0 3px 0 #74231f, 0 6px 12px #0002; }
         #halli-ring:disabled { opacity:.58; cursor:default; }
         .halli-emote-control { display:flex; flex-direction:column; align-items:center; gap:5px; }
         .halli-emote-picker { display:flex; align-items:center; justify-content:center; gap:8px; padding:6px 9px; border:1px solid #ddc99f; border-radius:22px; background:#fff9ea; box-shadow:0 3px 9px #6d49241a; }
@@ -1214,12 +1213,54 @@
             halliSubmitFlip();
         }
     });
-    document.getElementById('halli-ring').addEventListener('click', () => {
-        if (halliSeenVersion === null) return;
+    const halliRingButton = document.getElementById('halli-ring');
+    const halliRingPointers = new Set();
+    let halliRingTouchHandled = false;
+    let halliLastTouchRingAt = -Infinity;
+    function halliSubmitRing() {
+        if (halliSeenVersion === null || halliRingButton.disabled) return;
         socket.emit('halli-ring', {
             boardVersion: halliSeenVersion,
             elapsedMs: Math.max(0, Math.round(performance.now() - halliShownAt))
         });
+    }
+    halliRingButton.addEventListener('pointerdown', (event) => {
+        if (event.pointerType !== 'touch') return;
+        if (halliRingButton.disabled) return;
+        event.preventDefault();
+        halliLastTouchRingAt = performance.now();
+        halliRingPointers.add(event.pointerId);
+        halliRingButton.classList.add('is-pressed');
+        try { halliRingButton.setPointerCapture(event.pointerId); } catch {}
+        if (!halliRingTouchHandled) {
+            halliRingTouchHandled = true;
+            halliSubmitRing();
+        }
+    });
+    function halliReleaseRingPointer(event) {
+        halliLastTouchRingAt = performance.now();
+        halliRingPointers.delete(event.pointerId);
+        if (halliRingPointers.size === 0) {
+            halliRingTouchHandled = false;
+            halliRingButton.classList.remove('is-pressed');
+        }
+    }
+    halliRingButton.addEventListener('pointerup', halliReleaseRingPointer);
+    halliRingButton.addEventListener('pointercancel', halliReleaseRingPointer);
+    halliRingButton.addEventListener('lostpointercapture', halliReleaseRingPointer);
+    halliRingButton.addEventListener('click', (event) => {
+        // Keyboard clicks stay accessible; touch is already handled on pointerdown.
+        if (event.pointerType === 'touch') return;
+        if (event.detail === 0) {
+            halliSubmitRing();
+            return;
+        }
+        if (event.pointerType === 'mouse' || event.pointerType === 'pen') {
+            halliSubmitRing();
+            return;
+        }
+        if (performance.now() - halliLastTouchRingAt < 800) return;
+        halliSubmitRing();
     });
     const halliEmoteControl = document.querySelector('.halli-emote-control');
     const halliEmoteToggle = document.getElementById('halli-emote-toggle');

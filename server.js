@@ -24,6 +24,7 @@ const UNO_CALL_MS = 3000;
 const UNO_DEAL_CARD_STAGGER_MS = 110;
 const HALLI_SETTLE_MS = 500;
 const HALLI_MIN_VISIBLE_MS = 300;
+const HALLI_OWN_FLIP_RING_GRACE_MS = 1000;
 const HALLI_FRUITS = ['🍓', '🍋', '🍇', '🍈'];
 const HALLI_EMOTES = new Set(['cry', 'laugh', 'love', 'smug', 'dance']);
 const HALLI_EMOTE_COOLDOWN_MS = 650;
@@ -193,6 +194,7 @@ function halliResolveClaims(room) {
     halli.reactionTimes = {};
     halli.claims = [];
     halli.ringedPlayers = {};
+    halli.lastFlip = null;
     halli.boardVersion++;
     halliNextTurn(room, halli.currentIndex);
     room.gameState = 'HALLI_PLAYING';
@@ -753,6 +755,7 @@ io.on('connection', (socket) => {
                 reactionTimes: {},
                 ringedPlayers: {},
                 revivalUsedPlayers: {},
+                lastFlip: null,
                 claims: [],
                 lastResult: null,
                 resultSequence: 0,
@@ -818,10 +821,17 @@ io.on('connection', (socket) => {
         if (halli.playerOrder[halli.currentIndex] !== socket.id || !player.halliDraw.length) return;
         const now = Date.now();
         if (now < halli.flipAllowedAt) return;
+        const previousBoardVersion = halli.boardVersion;
         const card = player.halliDraw.pop();
         player.halliFaceUp.push(card);
         player.score = player.halliDraw.length;
         halli.boardVersion++;
+        halli.lastFlip = {
+            playerId: socket.id,
+            previousBoardVersion,
+            boardVersion: halli.boardVersion,
+            at: now
+        };
         halli.reactionTimes = {};
         halli.claims = [];
         halli.ringedPlayers = {};
@@ -841,7 +851,12 @@ io.on('connection', (socket) => {
         if (!room || room.gameMode !== 'HALLI' || !halli || !player || !halliFaceUpTotal(room)) return;
         if (!['HALLI_PLAYING', 'HALLI_SETTLING'].includes(room.gameState)) return;
         const version = Number(payload.boardVersion);
-        if (!Number.isInteger(version) || version !== halli.boardVersion) return;
+        const ringingImmediatelyAfterOwnFlip = Number.isInteger(version) &&
+            halli.lastFlip?.playerId === socket.id &&
+            halli.lastFlip.previousBoardVersion === version &&
+            halli.lastFlip.boardVersion === halli.boardVersion &&
+            Date.now() - halli.lastFlip.at <= HALLI_OWN_FLIP_RING_GRACE_MS;
+        if (!Number.isInteger(version) || (version !== halli.boardVersion && !ringingImmediatelyAfterOwnFlip)) return;
         const isEliminated = !halliHasDrawCards(player);
         if (isEliminated) {
             if (Object.prototype.hasOwnProperty.call(halli.revivalUsedPlayers, socket.id)) return;
